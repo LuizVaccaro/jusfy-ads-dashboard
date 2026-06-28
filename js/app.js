@@ -9,6 +9,7 @@ function onQuickChange() {
   document.getElementById('startDate').value = s;
   document.getElementById('endDate').value   = e;
   calcCmpDates();
+  applyFilter();
 }
 
 function onDateManual() {
