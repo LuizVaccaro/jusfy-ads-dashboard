@@ -43,6 +43,13 @@ async function tabSync() {
       <button class="sync-btn sync-ga4" onclick="triggerSync('ga4')">📈 Sync GA4</button>
       <button class="sync-btn" style="border-color:#1D9E7544;background:#1D9E7511;color:#1D9E75" onclick="triggerAll()">⚡ Sync Todos</button>
     </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #30363d">
+      <div style="font-size:12px;font-weight:600;color:#e6edf3;margin-bottom:8px">🎂 Criativos — Aniversário</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="sync-btn sync-m" onclick="triggerSync('meta-creatives')">🟡 Sync Meta Criativos</button>
+        <button class="sync-btn sync-g" onclick="triggerSync('google-creatives')">🔵 Sync Google Criativos</button>
+      </div>
+    </div>
     <div id="syncLog" style="margin-top:14px;font-size:12px;color:#8b949e;font-family:monospace;max-height:200px;overflow-y:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;display:none"></div>
   </div>`;
 }

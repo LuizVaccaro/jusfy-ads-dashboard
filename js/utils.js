@@ -84,6 +84,12 @@ async function fetchGA4(s, e) {
 async function fetchLogs() {
   return supa(`sync_logs?select=*&order=finished_at.desc&limit=20`);
 }
+async function fetchMetaCreatives(s, e) {
+  return supa(`meta_creatives?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
+}
+async function fetchGoogleCreatives(s, e) {
+  return supa(`google_creatives?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
+}
 
 // ── UI helpers ──
 function deltaHtml(curr, prev, invert=false) {
