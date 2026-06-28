@@ -1,0 +1,169 @@
+async function tabGeral() {
+  loading();
+  const [camps, ga4, cmpCamps, cmpGA4] = await Promise.all([
+    fetchCamps(S.start, S.end),
+    fetchGA4(S.start, S.end),
+    S.compare && S.cmpStart ? fetchCamps(S.cmpStart, S.cmpEnd) : [],
+    S.compare && S.cmpStart ? fetchGA4(S.cmpStart, S.cmpEnd)   : [],
+  ]);
+
+  const agg       = aggCamps(camps);
+  const cmpAgg    = cmpCamps.length ? aggCamps(cmpCamps) : [];
+  const ga4Agg    = aggGA4(ga4);
+  const cmpGA4Agg = cmpGA4.length ? aggGA4(cmpGA4) : [];
+
+  const gAgg  = agg.filter(r=>r.platform==='google_ads');
+  const mAgg  = agg.filter(r=>r.platform==='meta');
+  const cgAgg = cmpAgg.filter(r=>r.platform==='google_ads');
+  const cmAgg = cmpAgg.filter(r=>r.platform==='meta');
+
+  const totalSpend   = sum(agg,'spend');
+  const gSpend       = sum(gAgg,'spend');
+  const mSpend       = sum(mAgg,'spend');
+  const totalSess    = sum(ga4Agg,'sessions');
+  const totalConvGA4 = sum(ga4Agg,'conversions');
+  const totalRev     = sum(ga4Agg,'revenue');
+  const totalClicks  = sum(agg,'clicks');
+  const totalImpr    = sum(agg,'impressions');
+  const ctr          = totalImpr>0 ? totalClicks/totalImpr*100 : 0;
+  const cpa          = totalConvGA4>0 ? totalSpend/totalConvGA4 : null;
+
+  const cSpend  = cmpAgg.length  ? sum(cmpAgg,'spend')            : undefined;
+  const cgSpend = cgAgg.length   ? sum(cgAgg,'spend')             : undefined;
+  const cmSpend = cmAgg.length   ? sum(cmAgg,'spend')             : undefined;
+  const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')    : undefined;
+  const cConv   = cmpGA4Agg.length ? sum(cmpGA4Agg,'conversions') : undefined;
+  const cRev    = cmpGA4Agg.length ? sum(cmpGA4Agg,'revenue')     : undefined;
+  const cCpa    = (cConv&&cSpend&&cConv>0) ? cSpend/cConv : undefined;
+
+  // Daily spend chart
+  const dailyMap = {};
+  for (const r of camps) {
+    if (!dailyMap[r.date]) dailyMap[r.date]={g:0,m:0};
+    if (r.platform==='google_ads') dailyMap[r.date].g += +r.spend||0;
+    if (r.platform==='meta')       dailyMap[r.date].m += +r.spend||0;
+  }
+  const days  = Object.keys(dailyMap).sort();
+  const maxD  = Math.max(...days.map(d=>dailyMap[d].g+dailyMap[d].m),1);
+  const diffDays = (new Date(S.end)-new Date(S.start))/864e5;
+
+  let chartHtml = '';
+  if (days.length===0) {
+    chartHtml = '<div class="c-muted" style="text-align:center;padding:20px;font-size:13px">Sem dados</div>';
+  } else if (diffDays<=45) {
+    chartHtml = days.map(d=>{
+      const g=dailyMap[d].g, m=dailyMap[d].m, tot=g+m;
+      return `<div class="chart-day">
+        <span class="chart-label">${d.slice(5)}</span>
+        <div class="chart-bars">
+          ${g>0?`<div style="flex:${g};background:#58a6ff;border-radius:2px 0 0 2px" title="Google: ${fR(g)}"></div>`:''}
+          ${m>0?`<div style="flex:${m};background:#d29922;${g===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Meta: ${fR(m)}"></div>`:''}
+          <div style="flex:${maxD-tot};opacity:0"></div>
+        </div>
+        <span class="chart-val">${fR(tot)}</span>
+      </div>`;
+    }).join('');
+  } else {
+    const mMap = {};
+    for (const d of days) {
+      const mon = d.slice(0,7);
+      if (!mMap[mon]) mMap[mon]={g:0,m:0};
+      mMap[mon].g += dailyMap[d].g;
+      mMap[mon].m += dailyMap[d].m;
+    }
+    const maxM = Math.max(...Object.values(mMap).map(x=>x.g+x.m),1);
+    chartHtml = Object.entries(mMap).sort(([a],[b])=>a<b?-1:1).map(([mon,v])=>{
+      const tot=v.g+v.m;
+      const label=new Date(mon+'-15').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+      return `<div class="chart-day">
+        <span class="chart-label">${label}</span>
+        <div class="chart-bars">
+          ${v.g>0?`<div style="flex:${v.g};background:#58a6ff;border-radius:2px 0 0 2px" title="Google: ${fR(v.g)}"></div>`:''}
+          ${v.m>0?`<div style="flex:${v.m};background:#d29922;${v.g===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Meta: ${fR(v.m)}"></div>`:''}
+          <div style="flex:${maxM-tot};opacity:0"></div>
+        </div>
+        <span class="chart-val">${fR(tot)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // GA4 by channel
+  const chMap = {};
+  for (const r of ga4Agg) {
+    if (!chMap[r.channel]) chMap[r.channel]={sessions:0,conversions:0,revenue:0};
+    chMap[r.channel].sessions    += r.sessions;
+    chMap[r.channel].conversions += r.conversions;
+    chMap[r.channel].revenue     += r.revenue;
+  }
+  const channels = Object.entries(chMap).sort(([,a],[,b])=>b.conversions-a.conversions);
+
+  document.getElementById('content').innerHTML = `
+  <div class="kpi-grid cols-5">
+    ${kpiCard('Investimento Total', totalSpend,   cSpend,  fR, 'c-brand')}
+    ${kpiCard('Google Ads',         gSpend,       cgSpend, fR, 'c-blue')}
+    ${kpiCard('Meta Ads',           mSpend,       cmSpend, fR, 'c-yellow')}
+    ${kpiCard('Sessões (GA4)',       totalSess,    cSess,   fN, 'c-green')}
+    ${kpiCard('Conv. GA4',          totalConvGA4, cConv,   fN, 'c-blue')}
+  </div>
+  <div class="kpi-grid cols-4" style="margin-bottom:20px">
+    ${kpiCard('CPA (Invest./Conv.GA4)', cpa, cCpa, fR, 'c-brand', true)}
+    ${kpiCard('CTR Médio',   ctr,      undefined, fP, 'c-muted')}
+    ${kpiCard('Receita (GA4)', totalRev, cRev,    fR, 'c-green')}
+    ${kpiCard('Campanhas Ativas', new Set(agg.map(r=>r.campaign_name)).size, undefined, fN, 'c-muted')}
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">
+        Spend Diário por Plataforma
+        <div style="display:flex;gap:10px;font-size:11px;font-weight:400">
+          <span><span style="display:inline-block;width:10px;height:10px;background:#58a6ff;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Google</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#d29922;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Meta</span>
+        </div>
+      </div>
+      <div style="overflow-y:auto;max-height:320px">${chartHtml}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Distribuição por Plataforma</div>
+      ${[
+        {label:'Google Ads', badge:'bb', val:gSpend, cls:'c-blue',   pct:totalSpend>0?gSpend/totalSpend:0, bg:'#58a6ff'},
+        {label:'Meta Ads',   badge:'by', val:mSpend, cls:'c-yellow', pct:totalSpend>0?mSpend/totalSpend:0, bg:'#d29922'},
+      ].map(x=>`
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="badge ${x.badge}">${x.label}</span>
+            <strong class="${x.cls}">${fR(x.val)}</strong>
+          </div>
+          <div style="height:8px;background:#21262d;border-radius:4px;overflow:hidden;margin-bottom:3px">
+            <div style="height:100%;background:${x.bg};border-radius:4px;width:${(x.pct*100).toFixed(1)}%;transition:width .4s"></div>
+          </div>
+          <div style="font-size:11px;color:#8b949e;text-align:right">${(x.pct*100).toFixed(1)}% do total</div>
+        </div>`).join('')}
+      <div style="border-top:1px solid #30363d;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <span class="c-muted">Total de dias</span><strong>${days.length}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <span class="c-muted">Conv. via plataformas</span><strong>${fN(sum(agg,'conversions'))}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">GA4 — Conversões por Canal</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Canal</th><th class="r">Sessões</th><th class="r">Conversões</th>
+        <th class="r">Taxa Conv.</th><th class="r">Receita</th>
+      </tr></thead>
+      <tbody>${channels.length ? channels.map(([ch,d])=>`<tr>
+        <td><span class="badge bb">${ch}</span></td>
+        <td class="r">${fN(d.sessions)}</td>
+        <td class="r"><strong>${fN(d.conversions)}</strong></td>
+        <td class="r ${d.sessions>0&&d.conversions/d.sessions*100>2?'c-green':''}">${d.sessions>0?fP(d.conversions/d.sessions*100):'—'}</td>
+        <td class="r c-brand">${fR(d.revenue)}</td>
+      </tr>`).join('') : emptyRow(5)}</tbody>
+    </table></div>
+  </div>`;
+}

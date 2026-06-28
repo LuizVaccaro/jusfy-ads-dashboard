@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Jusfy · Dashboard de Ads</title>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div id="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="logo">Jusfy<span> · Ads</span></span>
+        <span style="color:#30363d">|</span>
+        <span id="headerPeriod" style="font-size:12px;color:#8b949e">—</span>
+      </div>
+      <span id="lastSync" style="font-size:11px;color:#8b949e"></span>
+    </div>
+    <div class="tabs" id="tabBar"></div>
+  </div>
+</div>
+
+<!-- ── Filter Bar ── -->
+<div id="filterBar">
+  <div class="filter-inner">
+    <div class="filter-row">
+      <div class="filter-group">
+        <span class="filter-label">Período Rápido</span>
+        <select class="filter-select" id="quickPeriod" onchange="onQuickChange()">
+          <option value="hoje">Hoje</option>
+          <option value="ontem">Ontem</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="14d">Últimos 14 dias</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="mes" selected>Este mês</option>
+          <option value="mesant">Mês passado</option>
+          <option value="custom">Personalizado</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Data Inicial</span>
+        <input class="filter-date" type="date" id="startDate" onchange="onDateManual()"/>
+      </div>
+      <div class="filter-sep">—</div>
+      <div class="filter-group">
+        <span class="filter-label">Data Final</span>
+        <input class="filter-date" type="date" id="endDate" onchange="onDateManual()"/>
+      </div>
+      <button class="filter-btn" onclick="applyFilter()">Atualizar Painel</button>
+    </div>
+    <div class="filter-cmp-row">
+      <label class="filter-check">
+        <input type="checkbox" id="cmpCheck" onchange="toggleCmp()"/>
+        Comparar com
+      </label>
+      <div class="cmp-fields" id="cmpFields">
+        <select class="filter-select" id="cmpMode" style="height:30px;font-size:12px;padding:4px 8px" onchange="calcCmpDates()">
+          <option value="anterior">Período anterior</option>
+          <option value="mesant">Mês passado</option>
+          <option value="anoant">Ano anterior</option>
+          <option value="custom">Personalizado</option>
+        </select>
+        <input class="cmp-date" type="date" id="cmpStart" readonly/>
+        <span class="cmp-sep">—</span>
+        <input class="cmp-date" type="date" id="cmpEnd" readonly/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Token Alert ── -->
+<div id="tokenAlert">
+  <div class="token-alert-inner">
+    <span class="token-alert-text" id="tokenAlertText">⚠️ Token Meta Ads próximo do vencimento</span>
+    <button class="token-alert-close" onclick="document.getElementById('tokenAlert').style.display='none'">✕</button>
+  </div>
+</div>
+
+<!-- ── Content ── -->
+<div id="content">
+  <div class="loading"><div class="spinner"></div>Iniciando…</div>
+</div>
+
+<footer>Jusfy · Dashboard de Ads · Dados em tempo real via Supabase</footer>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/tabs/geral.js"></script>
+<script src="js/tabs/diario.js"></script>
+<script src="js/tabs/google.js"></script>
+<script src="js/tabs/meta.js"></script>
+<script src="js/tabs/ga4.js"></script>
+<script src="js/tabs/sync.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
