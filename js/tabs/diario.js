@@ -98,7 +98,7 @@ async function tabDiario() {
           return `<tr style="${noData ? 'opacity:.45' : ''}">
             <td><strong>${disp(r.date)}</strong></td>
             <td class="r">${fN(r.sessions)}</td>
-            <td class="r"><strong>${fN(r.conversions)}</strong></td>
+            <td class="r"><strong>${fN(Math.round(r.conversions))}</strong></td>
             <td class="r ${txCls}">${fP(r.tx)}</td>
             <td class="r"><strong class="${cacCls}">${r.cac !== null ? fR(r.cac) : '—'}</strong></td>
             <td class="r">${fR(r.spend)}</td>
@@ -113,7 +113,7 @@ async function tabDiario() {
         <tr style="border-top:2px solid #30363d;background:#161b22">
           <td><strong>Total</strong></td>
           <td class="r"><strong>${fN(totSess)}</strong></td>
-          <td class="r"><strong>${fN(totConv)}</strong></td>
+          <td class="r"><strong>${fN(Math.round(totConv))}</strong></td>
           <td class="r"><strong>${fP(totTX)}</strong></td>
           <td class="r"><strong class="c-brand">${totCAC !== null ? fR(totCAC) : '—'}</strong></td>
           <td class="r"><strong class="c-brand">${fR(totSpend)}</strong></td>
