@@ -4,6 +4,7 @@ const norm = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 function aggMetaByAd(rows) {
   const m = {};
   for (const r of rows) {
+    if (+r.spend === 0 && !m[r.ad_id]) continue; // ignora linhas sem gasto se ad ainda não existe
     if (!m[r.ad_id]) m[r.ad_id] = {
       ad_id:r.ad_id, ad_name:r.ad_name, campaign_name:r.campaign_name,
       adset_name:r.adset_name, status:r.status, thumbnail_url:r.thumbnail_url,
@@ -23,12 +24,14 @@ function aggMetaByAd(rows) {
     if (r.thumbnail_url && !a.thumbnail_url) a.thumbnail_url = r.thumbnail_url;
     if (r.status && r.status !== 'UNKNOWN') a.status = r.status;
   }
-  return Object.values(m);
+  // só retorna anúncios com gasto > 0
+  return Object.values(m).filter(a => a.spend > 0);
 }
 
 function aggGoogleByAd(rows) {
   const m = {};
   for (const r of rows) {
+    if (+r.spend === 0 && !m[r.ad_id]) continue;
     if (!m[r.ad_id]) m[r.ad_id] = {
       ad_id:r.ad_id, ad_name:r.ad_name, campaign_name:r.campaign_name,
       adgroup_name:r.adgroup_name, status:r.status,
@@ -49,19 +52,19 @@ function aggGoogleByAd(rows) {
     if (r.thumbnail_url) a.thumbnail_url = r.thumbnail_url;
     if (r.status && r.status !== 'UNKNOWN') a.status = r.status;
   }
-  return Object.values(m).map(a => ({
+  return Object.values(m).filter(a => a.spend > 0).map(a => ({
     ...a,
-    vtr:          a.impressions>0 ? a.video_views/a.impressions*100 : 0,
-    cpe:          a.video_views>0 ? a.spend/a.video_views : 0,
-    ctr:          a.impressions>0 ? a.clicks/a.impressions*100 : 0,
-    video_p25_rate:  a.impressions>0 ? a._p25w/a.impressions : 0,
-    video_p50_rate:  a.impressions>0 ? a._p50w/a.impressions : 0,
-    video_p100_rate: a.impressions>0 ? a._p100w/a.impressions : 0,
+    vtr:             a.impressions > 0 ? a.video_views / a.impressions * 100 : 0,
+    cpe:             a.video_views > 0 ? a.spend / a.video_views : 0,
+    ctr:             a.impressions > 0 ? a.clicks / a.impressions * 100 : 0,
+    video_p25_rate:  a.impressions > 0 ? a._p25w / a.impressions : 0,
+    video_p50_rate:  a.impressions > 0 ? a._p50w / a.impressions : 0,
+    video_p100_rate: a.impressions > 0 ? a._p100w / a.impressions : 0,
   }));
 }
 
 function statusBadge(status) {
-  const active = status==='ACTIVE'||status==='ENABLED';
+  const active = status === 'ACTIVE' || status === 'ENABLED';
   return `<span style="background:${active?'#1D9E7520':'#30363d'};color:${active?'#1D9E75':'#8b949e'};border:1px solid ${active?'#1D9E7544':'#30363d'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${active?'ATIVO':'PAUSADO'}</span>`;
 }
 
@@ -74,9 +77,9 @@ function retentionBars(thruplayRate, p50Rate, p25Rate) {
       <span style="color:${color};min-width:32px;text-align:right">${pct.toFixed(1)}%</span>
     </div>`;
   return `<div style="display:flex;flex-direction:column;gap:4px;min-width:170px">
-    ${row('ThruPlay','#1D9E75',thruplayRate)}
-    ${row('50%','#58a6ff',p50Rate)}
-    ${row('25%','#d29922',p25Rate)}
+    ${row('ThruPlay','#1D9E75', thruplayRate)}
+    ${row('50%','#58a6ff', p50Rate)}
+    ${row('25%','#d29922', p25Rate)}
   </div>`;
 }
 
@@ -84,7 +87,7 @@ function ensureCreativeModal() {
   if (document.getElementById('creativeModal')) return;
   const m = document.createElement('div');
   m.id = 'creativeModal';
-  m.style = 'display:none;position:fixed;inset:0;background:#000000cc;z-index:9999;align-items:center;justify-content:center;padding:20px';
+  m.style.cssText = 'display:none;position:fixed;inset:0;background:#000000cc;z-index:9999;align-items:center;justify-content:center;padding:20px';
   m.innerHTML = `
     <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:440px;width:100%;position:relative">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
@@ -93,17 +96,17 @@ function ensureCreativeModal() {
           <div id="modalAdName" style="font-size:14px;font-weight:600;color:#e6edf3;word-break:break-word"></div>
         </div>
         <button onclick="document.getElementById('creativeModal').style.display='none'"
-          style="background:none;border:1px solid #30363d;color:#8b949e;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:12px">✕</button>
+          style="background:none;border:1px solid #30363d;color:#8b949e;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:12px">&#x2715;</button>
       </div>
       <div id="modalContent" style="border-radius:8px;overflow:hidden;background:#0d1117;min-height:180px;display:flex;align-items:center;justify-content:center"></div>
       <div style="margin-top:12px">
         <a id="modalLink" href="#" target="_blank" rel="noopener"
           style="display:block;text-align:center;background:#1D9E75;color:#fff;border-radius:6px;padding:10px;font-size:13px;text-decoration:none">
-          Abrir no Gerenciador →
+          Abrir no Gerenciador &#x2192;
         </a>
       </div>
     </div>`;
-  m.addEventListener('click', e => { if(e.target===m) m.style.display='none'; });
+  m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; });
   document.body.appendChild(m);
 }
 
@@ -113,125 +116,104 @@ function showCreative(name, thumb, videoId, managerUrl) {
   const content = document.getElementById('modalContent');
   const link    = document.getElementById('modalLink');
   if (videoId) {
-    content.innerHTML = `<iframe width="100%" height="280" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
-    link.href = `https://www.youtube.com/watch?v=${videoId}`;
+    content.innerHTML = '<iframe width="100%" height="280" src="https://www.youtube.com/embed/' + videoId + '?autoplay=1" frameborder="0" allow="autoplay;fullscreen" allowfullscreen></iframe>';
+    link.href = 'https://www.youtube.com/watch?v=' + videoId;
     link.textContent = 'Abrir no YouTube →';
   } else if (thumb) {
-    content.innerHTML = `<img src="${thumb}" style="width:100%;display:block;border-radius:4px" onerror="this.parentElement.innerHTML='<div style=\\'color:#8b949e;font-size:13px;padding:40px;text-align:center\\'>Thumbnail indisponível</div>'" />`;
-    link.href = managerUrl||'https://business.facebook.com';
+    content.innerHTML = '<img src="' + thumb + '" style="width:100%;display:block;border-radius:4px" onerror="this.parentElement.innerHTML=\'<div style=\\"color:#8b949e;font-size:13px;padding:40px;text-align:center\\">Thumbnail indisponível</div>\'" />';
+    link.href = managerUrl || 'https://business.facebook.com';
     link.textContent = 'Abrir no Gerenciador →';
   } else {
-    content.innerHTML = `<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>`;
-    link.href = managerUrl||'#';
+    content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
+    link.href = managerUrl || '#';
     link.textContent = 'Abrir no Gerenciador →';
   }
   document.getElementById('creativeModal').style.display = 'flex';
 }
 
 function previewBtn(name, thumb, videoId, managerUrl) {
-  const safe = (s||'') => (s||'').replace(/'/g,"\\'").replace(/\n/g,'');
-  return `<button onclick="showCreative('${safe(name)}','${safe(thumb)}','${safe(videoId)}','${safe(managerUrl)}')"
-    style="width:36px;height:36px;border-radius:50%;background:#21262d;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s"
-    onmouseover="this.style.background='#1D9E7533';this.style.color='#1D9E75';this.style.borderColor='#1D9E7566'"
-    onmouseout="this.style.background='#21262d';this.style.color='#8b949e';this.style.borderColor='#30363d'">▶</button>`;
+  const safe = s => (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '').replace(/\r/g, '');
+  return '<button onclick="showCreative(\'' + safe(name) + '\',\'' + safe(thumb) + '\',\'' + safe(videoId) + '\',\'' + safe(managerUrl) + '\')" '
+    + 'style="width:36px;height:36px;border-radius:50%;background:#21262d;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s" '
+    + 'onmouseover="this.style.background=\'#1D9E7533\';this.style.color=\'#1D9E75\';this.style.borderColor=\'#1D9E7566\'" '
+    + 'onmouseout="this.style.background=\'#21262d\';this.style.color=\'#8b949e\';this.style.borderColor=\'#30363d\'">&#x25B6;</button>';
 }
 
 function metaTable(ads, title, campaignBadge) {
-  if (!ads.length) return `<div class="card" style="margin-bottom:16px"><div class="card-title">${title}</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados para o período</div></div>`;
-  const sorted = [...ads].sort((a,b)=>b.spend-a.spend);
-  return `
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span>${title}</span>
-        <span class="badge by">${sorted.length} ADS</span>
-        ${campaignBadge ? `<span style="font-size:11px;color:#8b949e;font-weight:400">${campaignBadge}</span>` : ''}
-      </div>
-      <span style="font-size:11px;color:#8b949e;font-weight:400">Clique em ▶ para visualizar o criativo</span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th style="width:52px">Preview</th>
-        <th>Anúncio</th>
-        <th>Status</th>
-        <th class="r">Gasto</th>
-        <th class="r">Alcance</th>
-        <th class="r">Impressões</th>
-        <th class="r" style="color:#1D9E75">ThruPlay</th>
-        <th class="r">Custo/ThruPlay</th>
-        <th>Retenção</th>
-        <th class="r">Views 25%</th>
-        <th class="r">Views 50%</th>
-      </tr></thead>
-      <tbody>${sorted.map(ad => {
-        const imp   = ad.impressions||1;
-        const tpRate = ad.thruplay/imp*100;
-        const p50Rate= ad.video_p50/imp*100;
-        const p25Rate= ad.video_p25/imp*100;
-        const cpt    = ad.thruplay>0 ? ad.spend/ad.thruplay : null;
-        return `<tr>
-          <td style="text-align:center">${previewBtn(ad.ad_name, ad.thumbnail_url||'', '', 'https://business.facebook.com')}</td>
-          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(ad.ad_name||'').replace(/"/g,'&quot;')}">${ad.ad_name||'—'}</td>
-          <td>${statusBadge(ad.status)}</td>
-          <td class="r">${fR(ad.spend)}</td>
-          <td class="r">${fN(ad.reach)}</td>
-          <td class="r">${fN(ad.impressions)}</td>
-          <td class="r c-green"><strong>${fN(ad.thruplay)}</strong><br><span style="font-size:10px;color:#8b949e">${tpRate.toFixed(1)}%</span></td>
-          <td class="r">${cpt!==null?fR(cpt):'—'}</td>
-          <td>${retentionBars(tpRate, p50Rate, p25Rate)}</td>
-          <td class="r">${fN(ad.video_p25)}<br><span style="font-size:10px;color:#8b949e">${p25Rate.toFixed(1)}%</span></td>
-          <td class="r">${fN(ad.video_p50)}<br><span style="font-size:10px;color:#8b949e">${p50Rate.toFixed(1)}%</span></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>
-  </div>`;
+  if (!ads.length) return '<div class="card" style="margin-bottom:16px"><div class="card-title">' + title + '</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
+  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  let rows = '';
+  for (const ad of sorted) {
+    const imp      = ad.impressions || 1;
+    const tpRate   = ad.thruplay / imp * 100;
+    const p50Rate  = ad.video_p50 / imp * 100;
+    const p25Rate  = ad.video_p25 / imp * 100;
+    const cpt      = ad.thruplay > 0 ? ad.spend / ad.thruplay : null;
+    rows += '<tr>'
+      + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', 'https://business.facebook.com') + '</td>'
+      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
+      + '<td>' + statusBadge(ad.status) + '</td>'
+      + '<td class="r">' + fR(ad.spend) + '</td>'
+      + '<td class="r">' + fN(ad.reach) + '</td>'
+      + '<td class="r">' + fN(ad.impressions) + '</td>'
+      + '<td class="r c-green"><strong>' + fN(ad.thruplay) + '</strong><br><span style="font-size:10px;color:#8b949e">' + tpRate.toFixed(1) + '%</span></td>'
+      + '<td class="r">' + (cpt !== null ? fR(cpt) : '—') + '</td>'
+      + '<td>' + retentionBars(tpRate, p50Rate, p25Rate) + '</td>'
+      + '<td class="r">' + fN(ad.video_p25) + '<br><span style="font-size:10px;color:#8b949e">' + p25Rate.toFixed(1) + '%</span></td>'
+      + '<td class="r">' + fN(ad.video_p50) + '<br><span style="font-size:10px;color:#8b949e">' + p50Rate.toFixed(1) + '%</span></td>'
+      + '</tr>';
+  }
+  return '<div class="card" style="margin-bottom:16px">'
+    + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+    + '<div style="display:flex;align-items:center;gap:10px"><span>' + title + '</span>'
+    + '<span class="badge by">' + sorted.length + ' ADS</span>'
+    + (campaignBadge ? '<span style="font-size:11px;color:#8b949e;font-weight:400">' + campaignBadge + '</span>' : '')
+    + '</div>'
+    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '</div>'
+    + '<div class="table-wrap"><table>'
+    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
+    + '<th class="r">Gasto</th><th class="r">Alcance</th><th class="r">Impressões</th>'
+    + '<th class="r" style="color:#1D9E75">ThruPlay</th><th class="r">Custo/ThruPlay</th>'
+    + '<th>Retenção</th><th class="r">Views 25%</th><th class="r">Views 50%</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
 function googleTable(ads) {
-  if (!ads.length) return `<div class="card"><div class="card-title">🔵 Google Ads — Demand Gen</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados para o período</div></div>`;
-  const sorted = [...ads].sort((a,b)=>b.spend-a.spend);
-  return `
-  <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span>🔵 Google Ads — Demand Gen</span>
-        <span class="badge bb">${sorted.length} ADS</span>
-      </div>
-      <span style="font-size:11px;color:#8b949e;font-weight:400">Clique em ▶ para visualizar o criativo</span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th style="width:52px">Preview</th>
-        <th>Anúncio</th>
-        <th>Status</th>
-        <th class="r">Custo</th>
-        <th class="r">Impressões</th>
-        <th class="r">Cliques</th>
-        <th class="r" style="color:#58a6ff">Views (TrueView)</th>
-        <th class="r">VTR</th>
-        <th class="r">CPV Médio</th>
-        <th class="r">CTR</th>
-        <th class="r">Ret. 25%</th>
-        <th class="r">Ret. 50%</th>
-        <th class="r">Ret. 100%</th>
-      </tr></thead>
-      <tbody>${sorted.map(ad => `<tr>
-        <td style="text-align:center">${previewBtn(ad.ad_name, ad.thumbnail_url||'', ad.video_id||'', '')}</td>
-        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(ad.ad_name||'').replace(/"/g,'&quot;')}">${ad.ad_name||'—'}</td>
-        <td>${statusBadge(ad.status)}</td>
-        <td class="r">${fR(ad.spend)}</td>
-        <td class="r">${fN(ad.impressions)}</td>
-        <td class="r">${fN(ad.clicks)}</td>
-        <td class="r c-blue"><strong>${fN(ad.video_views)}</strong></td>
-        <td class="r">${ad.vtr.toFixed(2)}%</td>
-        <td class="r">${fR(ad.cpe)}</td>
-        <td class="r">${ad.ctr.toFixed(2)}%</td>
-        <td class="r c-yellow">${ad.video_p25_rate.toFixed(1)}%</td>
-        <td class="r c-blue">${ad.video_p50_rate.toFixed(1)}%</td>
-        <td class="r c-green">${ad.video_p100_rate.toFixed(1)}%</td>
-      </tr>`).join('')}</tbody>
-    </table></div>
-  </div>`;
+  if (!ads.length) return '<div class="card"><div class="card-title">&#x1F535; Google Ads — Demand Gen</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
+  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  let rows = '';
+  for (const ad of sorted) {
+    rows += '<tr>'
+      + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', ad.video_id || '', '') + '</td>'
+      + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
+      + '<td>' + statusBadge(ad.status) + '</td>'
+      + '<td class="r">' + fR(ad.spend) + '</td>'
+      + '<td class="r">' + fN(ad.impressions) + '</td>'
+      + '<td class="r">' + fN(ad.clicks) + '</td>'
+      + '<td class="r c-blue"><strong>' + fN(ad.video_views) + '</strong></td>'
+      + '<td class="r">' + ad.vtr.toFixed(2) + '%</td>'
+      + '<td class="r">' + fR(ad.cpe) + '</td>'
+      + '<td class="r">' + ad.ctr.toFixed(2) + '%</td>'
+      + '<td class="r c-yellow">' + ad.video_p25_rate.toFixed(1) + '%</td>'
+      + '<td class="r c-blue">' + ad.video_p50_rate.toFixed(1) + '%</td>'
+      + '<td class="r c-green">' + ad.video_p100_rate.toFixed(1) + '%</td>'
+      + '</tr>';
+  }
+  return '<div class="card">'
+    + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+    + '<div style="display:flex;align-items:center;gap:10px">'
+    + '<span>&#x1F535; Google Ads — Demand Gen</span>'
+    + '<span class="badge bb">' + sorted.length + ' ADS</span></div>'
+    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '</div>'
+    + '<div class="table-wrap"><table>'
+    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
+    + '<th class="r">Custo</th><th class="r">Impressões</th><th class="r">Cliques</th>'
+    + '<th class="r" style="color:#58a6ff">Views (TrueView)</th>'
+    + '<th class="r">VTR</th><th class="r">CPV Médio</th><th class="r">CTR</th>'
+    + '<th class="r">Ret. 25%</th><th class="r">Ret. 50%</th><th class="r">Ret. 100%</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
 async function tabAniversario() {
@@ -243,7 +225,7 @@ async function tabAniversario() {
     fetchGoogleCreatives(S.start, S.end),
   ]);
 
-  // Filtros
+  // Filtros por campanha/anúncio
   const metaTopoRaw  = metaRows.filter(r =>
     norm(r.campaign_name).includes('branding_topo') &&
     norm(r.campaign_name).includes('aniversario')
@@ -261,30 +243,27 @@ async function tabAniversario() {
   const metaFundo = aggMetaByAd(metaFundoRaw);
   const googleAni = aggGoogleByAd(googleAniRaw);
 
-  // KPIs consolidados
-  const totSpend   = [...metaTopo,...metaFundo].reduce((s,r)=>s+r.spend,0) + googleAni.reduce((s,r)=>s+r.spend,0);
-  const totThru    = [...metaTopo,...metaFundo].reduce((s,r)=>s+r.thruplay,0);
-  const totViews   = googleAni.reduce((s,r)=>s+r.video_views,0);
-  const totImpMeta = [...metaTopo,...metaFundo].reduce((s,r)=>s+r.impressions,0);
+  // KPIs consolidados (apenas anúncios com gasto)
+  const totSpend   = [...metaTopo, ...metaFundo].reduce((s, r) => s + r.spend, 0)
+                   + googleAni.reduce((s, r) => s + r.spend, 0);
+  const totThru    = [...metaTopo, ...metaFundo].reduce((s, r) => s + r.thruplay, 0);
+  const totViews   = googleAni.reduce((s, r) => s + r.video_views, 0);
+  const totImpMeta = [...metaTopo, ...metaFundo].reduce((s, r) => s + r.impressions, 0);
 
-  document.getElementById('content').innerHTML = `
-  <div class="card" style="margin-bottom:20px;border-color:#d2992244;background:#d299220a">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <span style="font-size:20px">🎂</span>
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#e6edf3">Campanha de Aniversário</div>
-        <div style="font-size:12px;color:#8b949e">${disp(S.start)} → ${disp(S.end)}</div>
-      </div>
-    </div>
-    <div class="kpi-grid cols-4">
-      ${kpiCard('Investimento Total', totSpend, undefined, fR, 'c-brand')}
-      ${kpiCard('ThruPlay (Meta)', totThru, undefined, fN, 'c-green')}
-      ${kpiCard('Impressões Meta', totImpMeta, undefined, fN, 'c-blue')}
-      ${kpiCard('Views YouTube', totViews, undefined, fN, 'c-yellow')}
-    </div>
-  </div>
-
-  ${metaTable(metaTopo, '🟡 Meta · Topo (Branding VV)', 'meta_branding_topo_engajamento_aniversário_VV')}
-  ${metaTable(metaFundo, '🟡 Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula')}
-  ${googleTable(googleAni)}`;
+  document.getElementById('content').innerHTML =
+    '<div class="card" style="margin-bottom:20px;border-color:#d2992244;background:#d299220a">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    + '<span style="font-size:20px">&#x1F382;</span>'
+    + '<div><div style="font-size:15px;font-weight:700;color:#e6edf3">Campanha de Aniversário</div>'
+    + '<div style="font-size:12px;color:#8b949e">' + disp(S.start) + ' → ' + disp(S.end) + '</div></div>'
+    + '</div>'
+    + '<div class="kpi-grid cols-4">'
+    + kpiCard('Investimento Total', totSpend,   undefined, fR, 'c-brand')
+    + kpiCard('ThruPlay (Meta)',    totThru,    undefined, fN, 'c-green')
+    + kpiCard('Impressões Meta', totImpMeta, undefined, fN, 'c-blue')
+    + kpiCard('Views YouTube',     totViews,   undefined, fN, 'c-yellow')
+    + '</div></div>'
+    + metaTable(metaTopo,  '&#x1F7E1; Meta · Topo (Branding VV)', 'meta_branding_topo_engajamento_aniversário_VV')
+    + metaTable(metaFundo, '&#x1F7E1; Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula')
+    + googleTable(googleAni);
 }
