@@ -156,7 +156,12 @@ function showCreative(name, thumb, videoId, managerUrl) {
     link.href = 'https://www.youtube.com/watch?v=' + videoId;
     link.textContent = 'Abrir no YouTube →';
   } else if (thumb) {
-    content.innerHTML = '<img src="' + thumb + '" style="width:100%;display:block;border-radius:4px" onerror="this.parentElement.innerHTML=\'<div style=\\"color:#8b949e;font-size:13px;padding:40px;text-align:center\\">Thumbnail indisponível</div>\'" />';
+    const img = document.createElement('img');
+    img.src = thumb;
+    img.style.cssText = 'width:100%;display:block;border-radius:4px';
+    img.onerror = () => { content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Thumbnail indisponível</div>'; };
+    content.innerHTML = '';
+    content.appendChild(img);
     link.href = managerUrl || 'https://business.facebook.com';
     link.textContent = 'Abrir no Gerenciador →';
   } else {
