@@ -8,6 +8,7 @@ function aggMetaByAd(rows) {
     if (!m[r.ad_id]) m[r.ad_id] = {
       ad_id:r.ad_id, ad_name:r.ad_name, campaign_name:r.campaign_name,
       adset_name:r.adset_name, status:r.status, thumbnail_url:r.thumbnail_url,
+      permalink_url:r.permalink_url||null,
       spend:0, reach:0, impressions:0, clicks:0,
       thruplay:0, video_p25:0, video_p50:0, video_p75:0, video_p100:0
     };
@@ -22,6 +23,7 @@ function aggMetaByAd(rows) {
     a.video_p75   += +r.video_p75||0;
     a.video_p100  += +r.video_p100||0;
     if (r.thumbnail_url && !a.thumbnail_url) a.thumbnail_url = r.thumbnail_url;
+    if (r.permalink_url && !a.permalink_url) a.permalink_url = r.permalink_url;
     if (r.status && r.status !== 'UNKNOWN') a.status = r.status;
   }
   // só retorna anúncios com gasto > 0
@@ -155,6 +157,16 @@ function showCreative(name, thumb, videoId, managerUrl) {
     content.innerHTML = '<iframe width="100%" height="280" src="https://www.youtube.com/embed/' + videoId + '?autoplay=1" frameborder="0" allow="autoplay;fullscreen" allowfullscreen></iframe>';
     link.href = 'https://www.youtube.com/watch?v=' + videoId;
     link.textContent = 'Abrir no YouTube →';
+  } else if (managerUrl && managerUrl.includes('instagram.com/p/')) {
+    // Instagram embed
+    const shortcode = managerUrl.match(/instagram\.com\/p\/([^/?#]+)/)?.[1];
+    if (shortcode) {
+      content.innerHTML = '<iframe src="https://www.instagram.com/p/' + shortcode + '/embed/" width="100%" height="380" frameborder="0" scrolling="no" allowtransparency="true" style="border-radius:8px;background:#000"></iframe>';
+    } else {
+      content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
+    }
+    link.href = managerUrl.split('#')[0];
+    link.textContent = 'Abrir no Instagram →';
   } else if (thumb) {
     const img = document.createElement('img');
     img.src = thumb;
@@ -191,7 +203,7 @@ function metaTable(ads, title, campaignBadge) {
     const p25Rate  = ad.video_p25 / imp * 100;
     const cpt      = ad.thruplay > 0 ? ad.spend / ad.thruplay : null;
     rows += '<tr>'
-      + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', 'https://business.facebook.com') + '</td>'
+      + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
       + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
       + '<td>' + statusBadge(ad.status) + '</td>'
       + '<td class="r">' + fR(ad.spend) + '</td>'
