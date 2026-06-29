@@ -261,19 +261,18 @@ async function tabAniversario() {
     fetchGoogleCreatives(S.start, S.end),
   ]);
 
-  // Filtros — comparação case-insensitive sem depender de remoção de acentos
-  const lc = s => (s||'').toLowerCase();
+  // Filtros — norm() remove acentos para cobrir 'aniversário', 'Aniversário', etc.
   const metaTopoRaw  = metaRows.filter(r =>
-    lc(r.campaign_name).includes('branding_topo') &&
-    lc(r.campaign_name).includes('aniversar') // cobre 'aniversário' e 'aniversario'
+    norm(r.campaign_name).includes('branding_topo') &&
+    norm(r.campaign_name).includes('aniversar')
   );
   const metaFundoRaw = metaRows.filter(r =>
-    lc(r.campaign_name).includes('vendas_fundo') &&
-    lc(r.ad_name).includes('pilula')
+    norm(r.campaign_name).includes('vendas_fundo') &&
+    norm(r.ad_name).includes('pilula')
   );
   const googleAniRaw = googleRows.filter(r =>
-    lc(r.campaign_name).includes('demandgen') &&
-    lc(r.ad_name).includes('aniversar')
+    norm(r.campaign_name).includes('demandgen') &&
+    norm(r.ad_name).includes('aniversar')
   );
 
   const metaTopo  = aggMetaByAd(metaTopoRaw);
