@@ -9,15 +9,16 @@ function aggMetaByAd(rows) {
       ad_id:r.ad_id, ad_name:r.ad_name, campaign_name:r.campaign_name,
       adset_name:r.adset_name, status:r.status, thumbnail_url:r.thumbnail_url,
       permalink_url:r.permalink_url||null,
-      spend:0, reach:0, impressions:0, clicks:0,
+      spend:0, reach:0, impressions:0, clicks:0, conversions:0,
       thruplay:0, video_p25:0, video_p50:0, video_p75:0, video_p100:0
     };
     const a = m[r.ad_id];
     a.spend       += +r.spend||0;
     a.reach       += +r.reach||0;
     a.impressions += +r.impressions||0;
-    a.clicks      += +r.clicks||0;
-    a.thruplay    += +r.thruplay||0;
+    a.clicks       += +r.clicks||0;
+    a.conversions  += +r.conversions||0;
+    a.thruplay     += +r.thruplay||0;
     a.video_p25   += +r.video_p25||0;
     a.video_p50   += +r.video_p50||0;
     a.video_p75   += +r.video_p75||0;
@@ -232,6 +233,42 @@ function metaTable(ads, title, campaignBadge) {
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
+function metaFundoTable(ads, title, campaignBadge) {
+  if (!ads.length) return '<div class="card" style="margin-bottom:16px"><div class="card-title">' + title + '</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
+  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  let rows = '';
+  for (const ad of sorted) {
+    const imp  = ad.impressions || 1;
+    const ctr  = ad.clicks / imp * 100;
+    const cpa  = ad.conversions > 0 ? ad.spend / ad.conversions : null;
+    const cpaCls = cpa == null ? 'c-muted' : cpa < 60 ? 'c-green' : cpa < 130 ? 'c-yellow' : 'c-red';
+    rows += '<tr>'
+      + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
+      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
+      + '<td>' + statusBadge(ad.status) + '</td>'
+      + '<td class="r c-brand">' + fR(ad.spend) + '</td>'
+      + '<td class="r">' + fN(ad.clicks) + '</td>'
+      + '<td class="r c-muted">' + fN(ad.impressions) + '</td>'
+      + '<td class="r">' + fP(ctr) + '</td>'
+      + '<td class="r"><strong>' + fN(ad.conversions) + '</strong></td>'
+      + '<td class="r ' + cpaCls + '">' + (cpa !== null ? fR(cpa) : '—') + '</td>'
+      + '</tr>';
+  }
+  return '<div class="card" style="margin-bottom:16px">'
+    + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+    + '<div style="display:flex;align-items:center;gap:10px"><span>' + title + '</span>'
+    + '<span class="badge by">' + sorted.length + ' ADS</span>'
+    + (campaignBadge ? '<span style="font-size:11px;color:#8b949e;font-weight:400">' + campaignBadge + '</span>' : '')
+    + '</div>'
+    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '</div>'
+    + '<div class="table-wrap"><table>'
+    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
+    + '<th class="r">Gasto</th><th class="r">Cliques</th><th class="r">Impressões</th>'
+    + '<th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
 function googleTable(ads) {
   if (!ads.length) return '<div class="card"><div class="card-title">&#x1F535; Google Ads — Demand Gen</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
   const sorted = [...ads].sort((a, b) => b.spend - a.spend);
@@ -315,6 +352,6 @@ async function tabAniversario() {
     + kpiCard('Views YouTube',     totViews,   undefined, fN, 'c-yellow')
     + '</div></div>'
     + metaTable(metaTopo,  '&#x1F7E1; Meta · Topo (Branding VV)', 'meta_branding_topo_engajamento_aniversário_VV')
-    + metaTable(metaFundo, '&#x1F7E1; Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula')
+    + metaFundoTable(metaFundo, '&#x1F7E1; Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula')
     + googleTable(googleAni);
 }
