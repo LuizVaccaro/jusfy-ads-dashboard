@@ -23,26 +23,20 @@ async function tabGeral() {
   const cgAgg = cmpAgg.filter(r=>r.platform==='google_ads');
   const cmAgg = cmpAgg.filter(r=>r.platform==='meta');
 
-  const totalSpend   = sum(agg,'spend');
-  const gSpend       = sum(gAgg,'spend');
-  const mSpend       = sum(mAgg,'spend');
-  const totalSess    = sum(ga4Agg,'sessions');
-  const totalConvGA4 = sum(ga4Agg,'conversions');
-  const totalRev     = sum(ga4Agg,'revenue');
-  const totalClicks  = sum(agg,'clicks');
-  const totalImpr    = sum(agg,'impressions');
-  const ctr          = totalImpr>0 ? totalClicks/totalImpr*100 : 0;
-  const cpa          = totalConvGA4>0 ? totalSpend/totalConvGA4 : null;
+  const totalSpend  = sum(agg,'spend');
+  const gSpend      = sum(gAgg,'spend');
+  const mSpend      = sum(mAgg,'spend');
+  const totalSess   = sum(ga4Agg,'sessions');
+  const totalClicks = sum(agg,'clicks');
+  const totalImpr   = sum(agg,'impressions');
+  const ctr         = totalImpr>0 ? totalClicks/totalImpr*100 : 0;
 
-  const cSpend  = cmpAgg.length    ? sum(cmpAgg,'spend')            : undefined;
-  const cgSpend = cgAgg.length     ? sum(cgAgg,'spend')             : undefined;
-  const cmSpend = cmAgg.length     ? sum(cmAgg,'spend')             : undefined;
-  const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')      : undefined;
-  const cConv   = cmpGA4Agg.length ? sum(cmpGA4Agg,'conversions')   : undefined;
-  const cRev    = cmpGA4Agg.length ? sum(cmpGA4Agg,'revenue')       : undefined;
-  const cCpa    = (cConv&&cSpend&&cConv>0) ? cSpend/cConv : undefined;
+  const cSpend  = cmpAgg.length    ? sum(cmpAgg,'spend')          : undefined;
+  const cgSpend = cgAgg.length     ? sum(cgAgg,'spend')           : undefined;
+  const cmSpend = cmAgg.length     ? sum(cmAgg,'spend')           : undefined;
+  const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')    : undefined;
 
-  // Daily spend chart — uses aggregated RPC by platform
+  // Daily spend chart — by platform
   const dailyMap = {};
   for (const r of dailyByPlatform) {
     if (!dailyMap[r.date]) dailyMap[r.date]={g:0,m:0};
@@ -93,29 +87,25 @@ async function tabGeral() {
     }).join('');
   }
 
-  // GA4 by channel
-  const chMap = {};
+  // Sessões por origem (UTM source)
+  const srcMap = {};
   for (const r of ga4Agg) {
-    if (!chMap[r.channel]) chMap[r.channel]={sessions:0,conversions:0,revenue:0};
-    chMap[r.channel].sessions    += r.sessions;
-    chMap[r.channel].conversions += r.conversions;
-    chMap[r.channel].revenue     += r.revenue;
+    if (!srcMap[r.source]) srcMap[r.source]=0;
+    srcMap[r.source] += r.sessions;
   }
-  const channels = Object.entries(chMap).sort(([,a],[,b])=>b.conversions-a.conversions);
+  const sources = Object.entries(srcMap).sort(([,a],[,b])=>b-a);
 
   document.getElementById('content').innerHTML = `
-  <div class="kpi-grid cols-5">
-    ${kpiCard('Investimento Total', totalSpend,   cSpend,  fR, 'c-brand')}
-    ${kpiCard('Google Ads',         gSpend,       cgSpend, fR, 'c-blue')}
-    ${kpiCard('Meta Ads',           mSpend,       cmSpend, fR, 'c-yellow')}
-    ${kpiCard('Sessões (GA4)',       totalSess,    cSess,   fN, 'c-green')}
-    ${kpiCard('Conv. GA4',          totalConvGA4, cConv,   fN, 'c-blue')}
-  </div>
   <div class="kpi-grid cols-4" style="margin-bottom:20px">
-    ${kpiCard('CPA (Invest./Conv.GA4)', cpa, cCpa, fR, 'c-brand', true)}
-    ${kpiCard('CTR Médio',   ctr,      undefined, fP, 'c-muted')}
-    ${kpiCard('Receita (GA4)', totalRev, cRev,    fR, 'c-green')}
+    ${kpiCard('Investimento Total', totalSpend,  cSpend,  fR, 'c-brand')}
+    ${kpiCard('Google Ads',         gSpend,      cgSpend, fR, 'c-blue')}
+    ${kpiCard('Meta Ads',           mSpend,      cmSpend, fR, 'c-yellow')}
+    ${kpiCard('Sessões (GA4)',       totalSess,   cSess,   fN, 'c-green')}
+  </div>
+  <div class="kpi-grid cols-3" style="margin-bottom:20px">
+    ${kpiCard('CTR Médio',        ctr,      undefined,  fP, 'c-muted')}
     ${kpiCard('Campanhas Ativas', new Set(agg.map(r=>r.campaign_name)).size, undefined, fN, 'c-muted')}
+    ${kpiCard('Conv. via Plataformas', sum(agg,'conversions'), undefined, fN, 'c-blue')}
   </div>
 
   <div class="grid-2" style="margin-bottom:16px">
@@ -149,27 +139,21 @@ async function tabGeral() {
         <div style="display:flex;justify-content:space-between;font-size:13px">
           <span class="c-muted">Total de dias</span><strong>${days.length}</strong>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px">
-          <span class="c-muted">Conv. via plataformas</span><strong>${fN(sum(agg,'conversions'))}</strong>
-        </div>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">GA4 — Conversões por Canal</div>
+    <div class="card-title">GA4 — Sessões por Origem (UTM Source)</div>
     <div class="table-wrap"><table>
       <thead><tr>
-        <th>Canal</th><th class="r">Sessões</th><th class="r">Conversões</th>
-        <th class="r">Taxa Conv.</th><th class="r">Receita</th>
+        <th>Origem</th><th class="r">Sessões</th><th class="r">% do Total</th>
       </tr></thead>
-      <tbody>${channels.length ? channels.map(([ch,d])=>`<tr>
-        <td><span class="badge bb">${ch}</span></td>
-        <td class="r">${fN(d.sessions)}</td>
-        <td class="r"><strong>${fN(d.conversions)}</strong></td>
-        <td class="r ${d.sessions>0&&d.conversions/d.sessions*100>2?'c-green':''}">${d.sessions>0?fP(d.conversions/d.sessions*100):'—'}</td>
-        <td class="r c-brand">${fR(d.revenue)}</td>
-      </tr>`).join('') : emptyRow(5)}</tbody>
+      <tbody>${sources.length ? sources.map(([src,s])=>`<tr>
+        <td><span class="badge bb">${src}</span></td>
+        <td class="r"><strong>${fN(s)}</strong></td>
+        <td class="r c-muted">${totalSess>0?fP(s/totalSess*100):'—'}</td>
+      </tr>`).join('') : emptyRow(3)}</tbody>
     </table></div>
   </div>`;
 }
