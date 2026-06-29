@@ -256,20 +256,17 @@ async function tabAniversario() {
   loading();
   ensureCreativeModal();
 
-  const [metaRows, googleRows] = await Promise.all([
-    fetchMetaCreatives(S.start, S.end),
+  // Queries direcionadas para evitar o limite de 1000 rows do Supabase REST
+  // (meta_creatives tem >1000 rows e os ads de aniversário começaram em 18-19/jun)
+  const [metaTopoRows, metaFundoRows, googleRows] = await Promise.all([
+    supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*branding_topo*&order=date.asc`),
+    supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*vendas_fundo*&ad_name=ilike.*pilula*&order=date.asc`),
     fetchGoogleCreatives(S.start, S.end),
   ]);
 
-  // Filtros — norm() remove acentos para cobrir 'aniversário', 'Aniversário', etc.
-  const metaTopoRaw  = metaRows.filter(r =>
-    norm(r.campaign_name).includes('branding_topo') &&
-    norm(r.campaign_name).includes('aniversar')
-  );
-  const metaFundoRaw = metaRows.filter(r =>
-    norm(r.campaign_name).includes('vendas_fundo') &&
-    norm(r.ad_name).includes('pilula')
-  );
+  // Filtro JS adicional: dentro dos branding_topo, só os de aniversário
+  const metaTopoRaw  = metaTopoRows.filter(r => norm(r.campaign_name).includes('aniversar'));
+  const metaFundoRaw = metaFundoRows; // já filtrado no DB
   const googleAniRaw = googleRows.filter(r =>
     norm(r.campaign_name).includes('demandgen') &&
     norm(r.ad_name).includes('aniversar')
