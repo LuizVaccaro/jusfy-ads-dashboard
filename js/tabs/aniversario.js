@@ -63,6 +63,42 @@ function aggGoogleByAd(rows) {
   }));
 }
 
+function aggGoogleByName(rows) {
+  const m = {};
+  for (const r of rows) {
+    const key = (r.ad_name || r.ad_id);
+    if (+r.spend === 0 && !m[key]) continue;
+    if (!m[key]) m[key] = {
+      ad_id: r.ad_id, ad_name: r.ad_name, campaign_name: r.campaign_name,
+      adgroup_name: r.adgroup_name, status: r.status,
+      video_id: r.video_id, thumbnail_url: r.thumbnail_url,
+      spend: 0, impressions: 0, clicks: 0, video_views: 0,
+      _p25w: 0, _p50w: 0, _p100w: 0
+    };
+    const a = m[key];
+    const imp = +r.impressions || 0;
+    a.spend       += +r.spend || 0;
+    a.impressions += imp;
+    a.clicks      += +r.clicks || 0;
+    a.video_views += +r.video_views || 0;
+    a._p25w       += (+r.video_p25_rate || 0) * imp;
+    a._p50w       += (+r.video_p50_rate || 0) * imp;
+    a._p100w      += (+r.video_p100_rate || 0) * imp;
+    if (r.video_id) a.video_id = r.video_id;
+    if (r.thumbnail_url) a.thumbnail_url = r.thumbnail_url;
+    if (r.status && r.status !== 'UNKNOWN') a.status = r.status;
+  }
+  return Object.values(m).filter(a => a.spend > 0).map(a => ({
+    ...a,
+    vtr:             a.impressions > 0 ? a.video_views / a.impressions * 100 : 0,
+    cpe:             a.video_views > 0 ? a.spend / a.video_views : 0,
+    ctr:             a.impressions > 0 ? a.clicks / a.impressions * 100 : 0,
+    video_p25_rate:  a.impressions > 0 ? a._p25w / a.impressions : 0,
+    video_p50_rate:  a.impressions > 0 ? a._p50w / a.impressions : 0,
+    video_p100_rate: a.impressions > 0 ? a._p100w / a.impressions : 0,
+  }));
+}
+
 function statusBadge(status) {
   const active = status === 'ACTIVE' || status === 'ENABLED';
   return `<span style="background:${active?'#1D9E7520':'#30363d'};color:${active?'#1D9E75':'#8b949e'};border:1px solid ${active?'#1D9E7544':'#30363d'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${active?'ATIVO':'PAUSADO'}</span>`;
@@ -225,23 +261,25 @@ async function tabAniversario() {
     fetchGoogleCreatives(S.start, S.end),
   ]);
 
-  // Filtros por campanha/anúncio
+  // Filtros — comparação case-insensitive sem depender de remoção de acentos
+  const lc = s => (s||'').toLowerCase();
   const metaTopoRaw  = metaRows.filter(r =>
-    norm(r.campaign_name).includes('branding_topo') &&
-    norm(r.campaign_name).includes('aniversario')
+    lc(r.campaign_name).includes('branding_topo') &&
+    lc(r.campaign_name).includes('aniversar') // cobre 'aniversário' e 'aniversario'
   );
   const metaFundoRaw = metaRows.filter(r =>
-    norm(r.campaign_name).includes('vendas_fundo') &&
-    norm(r.ad_name).includes('pilula')
+    lc(r.campaign_name).includes('vendas_fundo') &&
+    lc(r.ad_name).includes('pilula')
   );
   const googleAniRaw = googleRows.filter(r =>
-    norm(r.campaign_name).includes('demandgen') &&
-    norm(r.ad_name).includes('aniversario')
+    lc(r.campaign_name).includes('demandgen') &&
+    lc(r.ad_name).includes('aniversar')
   );
 
   const metaTopo  = aggMetaByAd(metaTopoRaw);
   const metaFundo = aggMetaByAd(metaFundoRaw);
-  const googleAni = aggGoogleByAd(googleAniRaw);
+  // Google: agrupa por ad_name (mesmo criativo em diferentes conjuntos)
+  const googleAni = aggGoogleByName(googleAniRaw);
 
   // KPIs consolidados (apenas anúncios com gasto)
   const totSpend   = [...metaTopo, ...metaFundo].reduce((s, r) => s + r.spend, 0)
