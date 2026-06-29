@@ -1,16 +1,22 @@
 async function tabGeral() {
   loading();
-  const [camps, ga4, cmpCamps, cmpGA4] = await Promise.all([
-    fetchCamps(S.start, S.end),
-    fetchGA4(S.start, S.end),
-    S.compare && S.cmpStart ? fetchCamps(S.cmpStart, S.cmpEnd) : [],
-    S.compare && S.cmpStart ? fetchGA4(S.cmpStart, S.cmpEnd)   : [],
+  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels] = await Promise.all([
+    fetchCampAgg(S.start, S.end),
+    fetchCampDailyByPlatform(S.start, S.end),
+    fetchGA4ChannelsAgg(S.start, S.end),
+    S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd)        : [],
+    S.compare && S.cmpStart ? fetchGA4ChannelsAgg(S.cmpStart, S.cmpEnd) : [],
   ]);
 
-  const agg       = aggCamps(camps);
-  const cmpAgg    = cmpCamps.length ? aggCamps(cmpCamps) : [];
-  const ga4Agg    = aggGA4(ga4);
-  const cmpGA4Agg = cmpGA4.length ? aggGA4(cmpGA4) : [];
+  const addMetrics = rows => rows.map(r => ({...r,
+    ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,
+    cpa: r.conversions>0 ? r.spend/r.conversions : null
+  }));
+
+  const agg       = addMetrics(campAgg);
+  const cmpAgg    = cmpCampAgg.length ? addMetrics(cmpCampAgg) : [];
+  const ga4Agg    = ga4Channels;
+  const cmpGA4Agg = cmpGA4Channels.length ? cmpGA4Channels : [];
 
   const gAgg  = agg.filter(r=>r.platform==='google_ads');
   const mAgg  = agg.filter(r=>r.platform==='meta');
@@ -28,17 +34,17 @@ async function tabGeral() {
   const ctr          = totalImpr>0 ? totalClicks/totalImpr*100 : 0;
   const cpa          = totalConvGA4>0 ? totalSpend/totalConvGA4 : null;
 
-  const cSpend  = cmpAgg.length  ? sum(cmpAgg,'spend')            : undefined;
-  const cgSpend = cgAgg.length   ? sum(cgAgg,'spend')             : undefined;
-  const cmSpend = cmAgg.length   ? sum(cmAgg,'spend')             : undefined;
-  const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')    : undefined;
-  const cConv   = cmpGA4Agg.length ? sum(cmpGA4Agg,'conversions') : undefined;
-  const cRev    = cmpGA4Agg.length ? sum(cmpGA4Agg,'revenue')     : undefined;
+  const cSpend  = cmpAgg.length    ? sum(cmpAgg,'spend')            : undefined;
+  const cgSpend = cgAgg.length     ? sum(cgAgg,'spend')             : undefined;
+  const cmSpend = cmAgg.length     ? sum(cmAgg,'spend')             : undefined;
+  const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')      : undefined;
+  const cConv   = cmpGA4Agg.length ? sum(cmpGA4Agg,'conversions')   : undefined;
+  const cRev    = cmpGA4Agg.length ? sum(cmpGA4Agg,'revenue')       : undefined;
   const cCpa    = (cConv&&cSpend&&cConv>0) ? cSpend/cConv : undefined;
 
-  // Daily spend chart
+  // Daily spend chart — uses aggregated RPC by platform
   const dailyMap = {};
-  for (const r of camps) {
+  for (const r of dailyByPlatform) {
     if (!dailyMap[r.date]) dailyMap[r.date]={g:0,m:0};
     if (r.platform==='google_ads') dailyMap[r.date].g += +r.spend||0;
     if (r.platform==='meta')       dailyMap[r.date].m += +r.spend||0;

@@ -1,12 +1,17 @@
 async function tabGoogle() {
   loading();
-  const [camps, cmpCamps] = await Promise.all([
-    fetchCamps(S.start, S.end),
-    S.compare && S.cmpStart ? fetchCamps(S.cmpStart, S.cmpEnd) : [],
+  const [campAgg, cmpCampAgg] = await Promise.all([
+    fetchCampAgg(S.start, S.end),
+    S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
   ]);
 
-  const agg    = aggCamps(camps.filter(r=>r.platform==='google_ads')).sort((a,b)=>b.spend-a.spend);
-  const cmpAgg = cmpCamps.length ? aggCamps(cmpCamps.filter(r=>r.platform==='google_ads')) : [];
+  const addMetrics = rows => rows.map(r => ({...r,
+    ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,
+    cpa: r.conversions>0 ? r.spend/r.conversions : null
+  }));
+
+  const agg    = addMetrics(campAgg.filter(r=>r.platform==='google_ads')).sort((a,b)=>b.spend-a.spend);
+  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='google_ads')) : [];
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
 
   const totSpend = sum(agg,'spend'), totClicks=sum(agg,'clicks'), totConv=sum(agg,'conversions'), totImpr=sum(agg,'impressions');

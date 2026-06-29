@@ -2,10 +2,10 @@
 async function tabDiario() {
   loading();
   const [camps, ga4, cmpCamps, cmpGA4] = await Promise.all([
-    fetchCamps(S.start, S.end),
-    fetchGA4(S.start, S.end),
-    S.compare && S.cmpStart ? fetchCamps(S.cmpStart, S.cmpEnd) : [],
-    S.compare && S.cmpStart ? fetchGA4(S.cmpStart, S.cmpEnd)   : [],
+    fetchCampDailyAgg(S.start, S.end),
+    fetchGA4DailyAgg(S.start, S.end),
+    S.compare && S.cmpStart ? fetchCampDailyAgg(S.cmpStart, S.cmpEnd) : [],
+    S.compare && S.cmpStart ? fetchGA4DailyAgg(S.cmpStart, S.cmpEnd)  : [],
   ]);
 
   function spendByDate(rows) {

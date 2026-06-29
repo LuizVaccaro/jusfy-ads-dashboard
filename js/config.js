@@ -8,3 +8,13 @@ async function supa(path) {
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
   return r.json();
 }
+
+async function supaRpc(fn, params) {
+  const r = await fetch(`${SURL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!r.ok) throw new Error(`Supabase RPC ${fn} ${r.status}: ${await r.text()}`);
+  return r.json();
+}

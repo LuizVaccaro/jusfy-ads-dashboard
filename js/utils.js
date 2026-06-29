@@ -75,6 +75,15 @@ function aggGA4(rows) {
 }
 
 // ── Fetch helpers ──
+
+// RPCs agregados (retornam poucos registros, muito mais rápido)
+async function fetchCampAgg(s, e)              { return supaRpc('get_camp_agg',                  { p_start: s, p_end: e }); }
+async function fetchCampDailyAgg(s, e)         { return supaRpc('get_camp_daily_agg',            { p_start: s, p_end: e }); }
+async function fetchCampDailyByPlatform(s, e)  { return supaRpc('get_camp_daily_by_platform',    { p_start: s, p_end: e }); }
+async function fetchGA4DailyAgg(s, e)          { return supaRpc('get_ga4_daily_agg',             { p_start: s, p_end: e }); }
+async function fetchGA4ChannelsAgg(s, e)       { return supaRpc('get_ga4_channels_agg',          { p_start: s, p_end: e }); }
+
+// Raw — mantidos para compatibilidade (criativos ainda precisam de linha por linha)
 async function fetchCamps(s, e) {
   return supa(`campaign_daily?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
 }

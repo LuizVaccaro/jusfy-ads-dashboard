@@ -1,12 +1,14 @@
 async function tabGA4() {
   loading();
-  const [ga4, cmpGA4] = await Promise.all([
-    fetchGA4(S.start, S.end),
-    S.compare && S.cmpStart ? fetchGA4(S.cmpStart, S.cmpEnd) : [],
+  const [ga4Channels, ga4Daily, cmpChannels, cmpDaily] = await Promise.all([
+    fetchGA4ChannelsAgg(S.start, S.end),
+    fetchGA4DailyAgg(S.start, S.end),
+    S.compare && S.cmpStart ? fetchGA4ChannelsAgg(S.cmpStart, S.cmpEnd) : [],
+    S.compare && S.cmpStart ? fetchGA4DailyAgg(S.cmpStart, S.cmpEnd)   : [],
   ]);
 
-  const agg    = aggGA4(ga4).sort((a,b)=>b.conversions-a.conversions);
-  const cmpAgg = cmpGA4.length ? aggGA4(cmpGA4) : [];
+  const agg    = ga4Channels.slice().sort((a,b)=>b.conversions-a.conversions);
+  const cmpAgg = cmpChannels.length ? cmpChannels : [];
 
   const totSess=sum(agg,'sessions'), totConv=sum(agg,'conversions'), totRev=sum(agg,'revenue');
   const cTotSess = cmpAgg.length ? sum(cmpAgg,'sessions')    : undefined;
@@ -15,11 +17,10 @@ async function tabGA4() {
   const convRate  = totSess>0 ? totConv/totSess*100 : 0;
   const cConvRate = (cTotSess&&cTotConv&&cTotSess>0) ? cTotConv/cTotSess*100 : undefined;
 
+  // Daily sessions chart from aggregated RPC
   const dailySess = {};
-  for (const r of ga4) {
-    if (!dailySess[r.date]) dailySess[r.date]={s:0,c:0};
-    dailySess[r.date].s += +r.sessions||0;
-    dailySess[r.date].c += +r.conversions||0;
+  for (const r of ga4Daily) {
+    dailySess[r.date] = { s: +r.sessions||0, c: +r.conversions||0 };
   }
   const ga4Days = Object.keys(dailySess).sort();
   const maxS = Math.max(...ga4Days.map(d=>dailySess[d].s),1);
