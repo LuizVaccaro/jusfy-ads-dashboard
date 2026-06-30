@@ -143,17 +143,5 @@ async function tabGeral() {
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">GA4 — Sessões por Origem (UTM Source)</div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>Origem</th><th class="r">Sessões</th><th class="r">% do Total</th>
-      </tr></thead>
-      <tbody>${sources.length ? sources.map(([src,s])=>`<tr>
-        <td><span class="badge bb">${src}</span></td>
-        <td class="r"><strong>${fN(s)}</strong></td>
-        <td class="r c-muted">${totalSess>0?fP(s/totalSess*100):'—'}</td>
-      </tr>`).join('') : emptyRow(3)}</tbody>
-    </table></div>
-  </div>`;
+  `;
 }
