@@ -4,21 +4,22 @@ const norm = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 function aggMetaByAd(rows) {
   const m = {};
   for (const r of rows) {
-    if (+r.spend === 0 && !m[r.ad_id]) continue; // ignora linhas sem gasto se ad ainda não existe
-    if (!m[r.ad_id]) m[r.ad_id] = {
+    const key = r.ad_name; // agrupa por nome do criativo (une ad_ids do mesmo criativo)
+    if (+r.spend === 0 && !m[key]) continue;
+    if (!m[key]) m[key] = {
       ad_id:r.ad_id, ad_name:r.ad_name, campaign_name:r.campaign_name,
       adset_name:r.adset_name, status:r.status, thumbnail_url:r.thumbnail_url,
       permalink_url:r.permalink_url||null,
       spend:0, reach:0, impressions:0, clicks:0, conversions:0,
       thruplay:0, video_p25:0, video_p50:0, video_p75:0, video_p100:0
     };
-    const a = m[r.ad_id];
+    const a = m[key];
     a.spend       += +r.spend||0;
     a.reach       += +r.reach||0;
     a.impressions += +r.impressions||0;
-    a.clicks       += +r.clicks||0;
-    a.conversions  += +r.conversions||0;
-    a.thruplay     += +r.thruplay||0;
+    a.clicks      += +r.clicks||0;
+    a.conversions += +r.conversions||0;
+    a.thruplay    += +r.thruplay||0;
     a.video_p25   += +r.video_p25||0;
     a.video_p50   += +r.video_p50||0;
     a.video_p75   += +r.video_p75||0;
@@ -27,7 +28,6 @@ function aggMetaByAd(rows) {
     if (r.permalink_url && !a.permalink_url) a.permalink_url = r.permalink_url;
     if (r.status && r.status !== 'UNKNOWN') a.status = r.status;
   }
-  // só retorna anúncios com gasto > 0
   return Object.values(m).filter(a => a.spend > 0);
 }
 
