@@ -1,10 +1,16 @@
 let _googleData = null;
+let _googleFilter = null;
 
 function renderGoogleTable(filterCamp) {
+  if (filterCamp !== undefined) _googleFilter = filterCamp;
   if (!_googleData) return;
   const { agg, cmpAgg, cmpMap, hasCmp } = _googleData;
-  const filtered    = filterCamp ? agg.filter(r => r.campaign_name === filterCamp) : agg;
-  const cmpFiltered = filterCamp ? cmpAgg.filter(r => r.campaign_name === filterCamp) : cmpAgg;
+  const filterVal   = _googleFilter;
+  const filtered0   = filterVal ? agg.filter(r => r.campaign_name === filterVal) : agg;
+  const cmpFiltered = filterVal ? cmpAgg.filter(r => r.campaign_name === filterVal) : cmpAgg;
+
+  const st = getSort('google', 'spend', 'desc');
+  const filtered = sortRows(filtered0, st.key, st.dir);
 
   const totSpend = sum(filtered,'spend'), totClicks=sum(filtered,'clicks'), totConv=sum(filtered,'conversions');
   const cTotSpend = cmpFiltered.length ? sum(cmpFiltered,'spend')       : undefined;
@@ -16,6 +22,13 @@ function renderGoogleTable(filterCamp) {
     kpiCard('Cliques',      totClicks, cTotClick, fN, 'c-green') +
     kpiCard('Conversões',   totConv,   cTotConv,  fN, 'c-yellow') +
     kpiCard('CPA Médio', totConv>0?totSpend/totConv:null, (cTotConv&&cTotSpend&&cTotConv>0)?cTotSpend/cTotConv:undefined, fR, 'c-brand', true);
+
+  document.getElementById('g-thead').innerHTML =
+    `<th>#</th>${sortTh('google','Campanha','campaign_name','asc','')}
+     ${sortTh('google','Gasto','spend')}${sortTh('google','Cliques','clicks')}
+     ${sortTh('google','Impressões','impressions')}${sortTh('google','CTR','ctr')}
+     ${sortTh('google','Conv.','conversions')}${sortTh('google','CPA','cpa')}
+     ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
 
   document.getElementById('g-tbody').innerHTML = filtered.length ? filtered.map((r,i) => {
     const cmp    = cmpMap[r.campaign_name];
@@ -52,6 +65,8 @@ async function tabGoogle() {
   const hasCmp = S.compare && cmpAgg.length > 0;
 
   _googleData = { agg, cmpAgg, cmpMap, hasCmp };
+  _googleFilter = null;
+  registerSortRenderer('google', () => renderGoogleTable());
 
   const camps = agg.map(r => r.campaign_name);
 
@@ -68,12 +83,7 @@ async function tabGoogle() {
   <div class="card">
     <div class="card-title">Google Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
     <div class="table-wrap"><table>
-      <thead><tr>
-        <th>#</th><th>Campanha</th><th class="r">Gasto</th>
-        <th class="r">Cliques</th><th class="r">Impressões</th>
-        <th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>
-        ${hasCmp?'<th class="r">Δ Gasto</th>':''}
-      </tr></thead>
+      <thead><tr id="g-thead"></tr></thead>
       <tbody id="g-tbody"></tbody>
     </table></div>
   </div>`;

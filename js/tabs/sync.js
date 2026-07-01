@@ -1,23 +1,38 @@
+let _syncLogs = [];
+
+function renderSyncLogsTable() {
+  const st   = getSort('sync-logs', 'finished_at', 'desc');
+  const logs = sortRows(_syncLogs, st.key, st.dir);
+
+  document.getElementById('sync-logs-thead').innerHTML =
+    `${sortTh('sync-logs','Plataforma','platform','asc','')}${sortTh('sync-logs','Tipo','sync_type','asc','')}
+     ${sortTh('sync-logs','Resultado','status','asc','')}${sortTh('sync-logs','Registros','records_upserted')}
+     ${sortTh('sync-logs','Horário','finished_at')}`;
+
+  document.getElementById('sync-logs-tbody').innerHTML = logs.length ? logs.map(r=>{
+    const ok     = r.status==='success';
+    const pBadge = r.platform==='google_ads'?'bb':r.platform==='meta'?'by':'bg';
+    return `<tr>
+      <td><span class="badge ${pBadge}">${r.platform}</span></td>
+      <td class="c-muted">${r.sync_type}</td>
+      <td>${ok?'✅ Sucesso':'⚠️ '+((r.error_message||'').substring(0,70))}</td>
+      <td class="r">${ok?fN(r.records_upserted):'—'}</td>
+      <td class="r c-muted" style="font-size:11px">${new Date(r.finished_at).toLocaleString('pt-BR')}</td>
+    </tr>`;
+  }).join('') : emptyRow(5,'Nenhum log encontrado');
+}
+
 async function tabSync() {
   loading();
-  const logs = await fetchLogs();
+  _syncLogs = await fetchLogs();
+  registerSortRenderer('sync-logs', renderSyncLogsTable);
 
   document.getElementById('content').innerHTML = `
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">Últimas Sincronizações</div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Plataforma</th><th>Tipo</th><th>Resultado</th><th class="r">Registros</th><th class="r">Horário</th></tr></thead>
-      <tbody>${logs.length ? logs.map(r=>{
-        const ok     = r.status==='success';
-        const pBadge = r.platform==='google_ads'?'bb':r.platform==='meta'?'by':'bg';
-        return `<tr>
-          <td><span class="badge ${pBadge}">${r.platform}</span></td>
-          <td class="c-muted">${r.sync_type}</td>
-          <td>${ok?'✅ Sucesso':'⚠️ '+((r.error_message||'').substring(0,70))}</td>
-          <td class="r">${ok?fN(r.records_upserted):'—'}</td>
-          <td class="r c-muted" style="font-size:11px">${new Date(r.finished_at).toLocaleString('pt-BR')}</td>
-        </tr>`;
-      }).join('') : emptyRow(5,'Nenhum log encontrado')}</tbody>
+      <thead><tr id="sync-logs-thead"></tr></thead>
+      <tbody id="sync-logs-tbody"></tbody>
     </table></div>
   </div>
 
@@ -52,6 +67,8 @@ async function tabSync() {
     </div>
     <div id="syncLog" style="margin-top:14px;font-size:12px;color:#8b949e;font-family:monospace;max-height:200px;overflow-y:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;display:none"></div>
   </div>`;
+
+  renderSyncLogsTable();
 }
 
 async function triggerSync(fn) {

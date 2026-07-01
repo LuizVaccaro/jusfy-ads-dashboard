@@ -193,16 +193,22 @@ function previewBtn(name, thumb, videoId, managerUrl) {
     + 'onmouseout="this.style.background=\'#21262d\';this.style.color=\'#8b949e\';this.style.borderColor=\'#30363d\'">&#x25B6;</button>';
 }
 
-function metaTable(ads, title, campaignBadge) {
+function metaTable(ads, title, campaignBadge, tableId) {
   if (!ads.length) return '<div class="card" style="margin-bottom:16px"><div class="card-title">' + title + '</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
-  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  const withMetrics = ads.map(ad => {
+    const imp = ad.impressions || 1;
+    return { ...ad,
+      tpRate:  ad.thruplay / imp * 100,
+      p50Rate: ad.video_p50 / imp * 100,
+      p25Rate: ad.video_p25 / imp * 100,
+      cpt:     ad.thruplay > 0 ? ad.spend / ad.thruplay : null,
+    };
+  });
+  const st     = getSort(tableId, 'spend', 'desc');
+  const sorted = sortRows(withMetrics, st.key, st.dir);
   let rows = '';
   for (const ad of sorted) {
-    const imp      = ad.impressions || 1;
-    const tpRate   = ad.thruplay / imp * 100;
-    const p50Rate  = ad.video_p50 / imp * 100;
-    const p25Rate  = ad.video_p25 / imp * 100;
-    const cpt      = ad.thruplay > 0 ? ad.spend / ad.thruplay : null;
+    const tpRate  = ad.tpRate, p50Rate = ad.p50Rate, p25Rate = ad.p25Rate, cpt = ad.cpt;
     rows += '<tr>'
       + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
       + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
@@ -226,21 +232,27 @@ function metaTable(ads, title, campaignBadge) {
     + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
-    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
-    + '<th class="r">Gasto</th><th class="r">Alcance</th><th class="r">Impressões</th>'
-    + '<th class="r" style="color:#1D9E75">ThruPlay</th><th class="r">Custo/ThruPlay</th>'
-    + '<th>Retenção</th><th class="r">Views 25%</th><th class="r">Views 50%</th>'
+    + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
+    + sortTh(tableId,'Gasto','spend') + sortTh(tableId,'Alcance','reach') + sortTh(tableId,'Impressões','impressions')
+    + sortTh(tableId,'ThruPlay','thruplay') + sortTh(tableId,'Custo/ThruPlay','cpt')
+    + '<th>Retenção</th>' + sortTh(tableId,'Views 25%','video_p25') + sortTh(tableId,'Views 50%','video_p50')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
-function metaFundoTable(ads, title, campaignBadge) {
+function metaFundoTable(ads, title, campaignBadge, tableId) {
   if (!ads.length) return '<div class="card" style="margin-bottom:16px"><div class="card-title">' + title + '</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
-  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  const withMetrics = ads.map(ad => {
+    const imp = ad.impressions || 1;
+    return { ...ad,
+      ctr: ad.clicks / imp * 100,
+      cpa: ad.conversions > 0 ? ad.spend / ad.conversions : null,
+    };
+  });
+  const st     = getSort(tableId, 'spend', 'desc');
+  const sorted = sortRows(withMetrics, st.key, st.dir);
   let rows = '';
   for (const ad of sorted) {
-    const imp  = ad.impressions || 1;
-    const ctr  = ad.clicks / imp * 100;
-    const cpa  = ad.conversions > 0 ? ad.spend / ad.conversions : null;
+    const ctr = ad.ctr, cpa = ad.cpa;
     const cpaCls = cpa == null ? 'c-muted' : cpa < 60 ? 'c-green' : cpa < 130 ? 'c-yellow' : 'c-red';
     rows += '<tr>'
       + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
@@ -263,15 +275,16 @@ function metaFundoTable(ads, title, campaignBadge) {
     + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
-    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
-    + '<th class="r">Gasto</th><th class="r">Cliques</th><th class="r">Impressões</th>'
-    + '<th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>'
+    + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
+    + sortTh(tableId,'Gasto','spend') + sortTh(tableId,'Cliques','clicks') + sortTh(tableId,'Impressões','impressions')
+    + sortTh(tableId,'CTR','ctr') + sortTh(tableId,'Conv.','conversions') + sortTh(tableId,'CPA','cpa')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
-function googleTable(ads) {
+function googleTable(ads, tableId) {
   if (!ads.length) return '<div class="card"><div class="card-title">&#x1F535; Google Ads — Demand Gen</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem dados com gasto no período</div></div>';
-  const sorted = [...ads].sort((a, b) => b.spend - a.spend);
+  const st     = getSort(tableId, 'spend', 'desc');
+  const sorted = sortRows(ads, st.key, st.dir);
   let rows = '';
   for (const ad of sorted) {
     rows += '<tr>'
@@ -298,12 +311,36 @@ function googleTable(ads) {
     + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
-    + '<thead><tr><th style="width:52px">Preview</th><th>Anúncio</th><th>Status</th>'
-    + '<th class="r">Custo</th><th class="r">Impressões</th><th class="r">Cliques</th>'
-    + '<th class="r" style="color:#58a6ff">Views (TrueView)</th>'
-    + '<th class="r">VTR</th><th class="r">CPV Médio</th><th class="r">CTR</th>'
-    + '<th class="r">Ret. 25%</th><th class="r">Ret. 50%</th><th class="r">Ret. 100%</th>'
+    + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
+    + sortTh(tableId,'Custo','spend') + sortTh(tableId,'Impressões','impressions') + sortTh(tableId,'Cliques','clicks')
+    + sortTh(tableId,'Views (TrueView)','video_views')
+    + sortTh(tableId,'VTR','vtr') + sortTh(tableId,'CPV Médio','cpe') + sortTh(tableId,'CTR','ctr')
+    + sortTh(tableId,'Ret. 25%','video_p25_rate') + sortTh(tableId,'Ret. 50%','video_p50_rate') + sortTh(tableId,'Ret. 100%','video_p100_rate')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
+let _aniversarioData = null;
+
+function renderAniversarioBody() {
+  if (!_aniversarioData) return;
+  const { metaTopo, metaFundo, googleAni, totSpend, totThru, totViews, totImpMeta } = _aniversarioData;
+
+  document.getElementById('content').innerHTML =
+    '<div class="card" style="margin-bottom:20px;border-color:#d2992244;background:#d299220a">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    + '<span style="font-size:20px">&#x1F382;</span>'
+    + '<div><div style="font-size:15px;font-weight:700;color:#e6edf3">Campanha de Aniversário</div>'
+    + '<div style="font-size:12px;color:#8b949e">' + disp(S.start) + ' → ' + disp(S.end) + '</div></div>'
+    + '</div>'
+    + '<div class="kpi-grid cols-4">'
+    + kpiCard('Investimento Total', totSpend,   undefined, fR, 'c-brand')
+    + kpiCard('ThruPlay (Meta)',    totThru,    undefined, fN, 'c-green')
+    + kpiCard('Impressões Meta', totImpMeta, undefined, fN, 'c-blue')
+    + kpiCard('Views YouTube',     totViews,   undefined, fN, 'c-yellow')
+    + '</div></div>'
+    + metaTable(metaTopo,  '&#x1F7E1; Meta · Topo (Branding VV)', 'meta_branding_topo_engajamento_aniversário_VV', 'ani-topo')
+    + metaFundoTable(metaFundo, '&#x1F7E1; Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula', 'ani-fundo')
+    + googleTable(googleAni, 'ani-google');
 }
 
 async function tabAniversario() {
@@ -338,20 +375,9 @@ async function tabAniversario() {
   const totViews   = googleAni.reduce((s, r) => s + r.video_views, 0);
   const totImpMeta = [...metaTopo, ...metaFundo].reduce((s, r) => s + r.impressions, 0);
 
-  document.getElementById('content').innerHTML =
-    '<div class="card" style="margin-bottom:20px;border-color:#d2992244;background:#d299220a">'
-    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
-    + '<span style="font-size:20px">&#x1F382;</span>'
-    + '<div><div style="font-size:15px;font-weight:700;color:#e6edf3">Campanha de Aniversário</div>'
-    + '<div style="font-size:12px;color:#8b949e">' + disp(S.start) + ' → ' + disp(S.end) + '</div></div>'
-    + '</div>'
-    + '<div class="kpi-grid cols-4">'
-    + kpiCard('Investimento Total', totSpend,   undefined, fR, 'c-brand')
-    + kpiCard('ThruPlay (Meta)',    totThru,    undefined, fN, 'c-green')
-    + kpiCard('Impressões Meta', totImpMeta, undefined, fN, 'c-blue')
-    + kpiCard('Views YouTube',     totViews,   undefined, fN, 'c-yellow')
-    + '</div></div>'
-    + metaTable(metaTopo,  '&#x1F7E1; Meta · Topo (Branding VV)', 'meta_branding_topo_engajamento_aniversário_VV')
-    + metaFundoTable(metaFundo, '&#x1F7E1; Meta · Fundo (Conversão)', 'meta_vendas_fundo — criativos pilula')
-    + googleTable(googleAni);
+  _aniversarioData = { metaTopo, metaFundo, googleAni, totSpend, totThru, totViews, totImpMeta };
+  registerSortRenderer('ani-topo', renderAniversarioBody);
+  registerSortRenderer('ani-fundo', renderAniversarioBody);
+  registerSortRenderer('ani-google', renderAniversarioBody);
+  renderAniversarioBody();
 }

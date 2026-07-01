@@ -1,4 +1,71 @@
 // Regra: GA4 → apenas sessões | conversões + spend → plataformas (campaign_daily)
+let _diarioData = null;
+
+function renderDiarioBody() {
+  if (!_diarioData) return;
+  const { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp } = _diarioData;
+
+  const st     = getSort('diario', 'date', 'desc');
+  const sorted = sortRows(rows, st.key, st.dir);
+
+  document.getElementById('content').innerHTML = `
+  <div class="kpi-grid cols-5" style="margin-bottom:20px">
+    ${kpiCard('Investimento Total', totSpend, cTotSpend, fR, 'c-brand')}
+    ${kpiCard('Sessões (GA4)',      totSess,  cTotSess,  fN, 'c-green')}
+    ${kpiCard('Cadastros',          totConv,  cTotConv,  fN, 'c-blue')}
+    ${kpiCard('TX. Conversão',      totTX,    undefined, fP, 'c-muted')}
+    ${kpiCard('CAC Real',           totCAC,   cTotCAC,   fR, 'c-brand', true)}
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">
+      Performance Diária — ${disp(S.start)} → ${disp(S.end)}
+      <span style="font-size:11px;font-weight:400;color:#8b949e">${rows.length} dias</span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        ${sortTh('diario','Data','date','desc','')}
+        ${sortTh('diario','Sessões','sessions')}
+        ${sortTh('diario','Cadastros','conversions')}
+        ${sortTh('diario','TX. Conversão','tx')}
+        ${sortTh('diario','CAC Real','cac')}
+        ${sortTh('diario','Investimento','spend')}
+        ${hasCmp ? '<th class="r">Δ CAC</th><th class="r">Δ Invest.</th>' : ''}
+      </tr></thead>
+      <tbody>
+        ${sorted.length ? sorted.map(r => {
+          const cacCls = r.cac !== null && r.cac < 300 ? 'c-brand' : r.cac !== null && r.cac < 600 ? 'c-yellow' : 'c-red';
+          const txCls  = r.tx > 0.5 ? 'c-green' : r.tx > 0.2 ? '' : 'c-muted';
+          const noData = r.spend === 0 && r.sessions === 0;
+          return `<tr style="${noData ? 'opacity:.45' : ''}">
+            <td><strong>${disp(r.date)}</strong></td>
+            <td class="r">${fN(r.sessions)}</td>
+            <td class="r"><strong>${fN(Math.round(r.conversions))}</strong></td>
+            <td class="r ${txCls}">${fP(r.tx)}</td>
+            <td class="r"><strong class="${cacCls}">${r.cac !== null ? fR(r.cac) : '—'}</strong></td>
+            <td class="r">${fR(r.spend)}</td>
+            ${hasCmp && r.cmpRow ? `
+              <td class="r">${r.cmpRow.cac !== null ? deltaHtml(r.cac, r.cmpRow.cac, true) || fR(r.cmpRow.cac) : '—'}</td>
+              <td class="r">${deltaHtml(r.spend, r.cmpRow.spend) || fR(r.cmpRow.spend)}</td>
+            ` : hasCmp ? '<td class="r c-muted">—</td><td class="r c-muted">—</td>' : ''}
+          </tr>`;
+        }).join('') : emptyRow(hasCmp ? 8 : 6)}
+      </tbody>
+      <tfoot>
+        <tr style="border-top:2px solid #30363d;background:#161b22">
+          <td><strong>Total</strong></td>
+          <td class="r"><strong>${fN(totSess)}</strong></td>
+          <td class="r"><strong>${fN(Math.round(totConv))}</strong></td>
+          <td class="r"><strong>${fP(totTX)}</strong></td>
+          <td class="r"><strong class="c-brand">${totCAC !== null ? fR(totCAC) : '—'}</strong></td>
+          <td class="r"><strong class="c-brand">${fR(totSpend)}</strong></td>
+          ${hasCmp ? '<td></td><td></td>' : ''}
+        </tr>
+      </tfoot>
+    </table></div>
+  </div>`;
+}
+
 async function tabDiario() {
   loading();
   const [camps, ga4, cmpCamps, cmpGA4] = await Promise.all([
@@ -66,60 +133,7 @@ async function tabDiario() {
 
   const hasCmp = S.compare && cmpCamps.length > 0;
 
-  document.getElementById('content').innerHTML = `
-  <div class="kpi-grid cols-5" style="margin-bottom:20px">
-    ${kpiCard('Investimento Total', totSpend, cTotSpend, fR, 'c-brand')}
-    ${kpiCard('Sessões (GA4)',      totSess,  cTotSess,  fN, 'c-green')}
-    ${kpiCard('Cadastros',          totConv,  cTotConv,  fN, 'c-blue')}
-    ${kpiCard('TX. Conversão',      totTX,    undefined, fP, 'c-muted')}
-    ${kpiCard('CAC Real',           totCAC,   cTotCAC,   fR, 'c-brand', true)}
-  </div>
-
-  <div class="card">
-    <div class="card-title" style="margin-bottom:14px">
-      Performance Diária — ${disp(S.start)} → ${disp(S.end)}
-      <span style="font-size:11px;font-weight:400;color:#8b949e">${dates.length} dias</span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>Data</th>
-        <th class="r">Sessões</th>
-        <th class="r">Cadastros</th>
-        <th class="r">TX. Conversão</th>
-        <th class="r" style="color:#1D9E75">CAC Real</th>
-        <th class="r">Investimento</th>
-        ${hasCmp ? '<th class="r">Δ CAC</th><th class="r">Δ Invest.</th>' : ''}
-      </tr></thead>
-      <tbody>
-        ${rows.length ? rows.map(r => {
-          const cacCls = r.cac !== null && r.cac < 300 ? 'c-brand' : r.cac !== null && r.cac < 600 ? 'c-yellow' : 'c-red';
-          const txCls  = r.tx > 0.5 ? 'c-green' : r.tx > 0.2 ? '' : 'c-muted';
-          const noData = r.spend === 0 && r.sessions === 0;
-          return `<tr style="${noData ? 'opacity:.45' : ''}">
-            <td><strong>${disp(r.date)}</strong></td>
-            <td class="r">${fN(r.sessions)}</td>
-            <td class="r"><strong>${fN(Math.round(r.conversions))}</strong></td>
-            <td class="r ${txCls}">${fP(r.tx)}</td>
-            <td class="r"><strong class="${cacCls}">${r.cac !== null ? fR(r.cac) : '—'}</strong></td>
-            <td class="r">${fR(r.spend)}</td>
-            ${hasCmp && r.cmpRow ? `
-              <td class="r">${r.cmpRow.cac !== null ? deltaHtml(r.cac, r.cmpRow.cac, true) || fR(r.cmpRow.cac) : '—'}</td>
-              <td class="r">${deltaHtml(r.spend, r.cmpRow.spend) || fR(r.cmpRow.spend)}</td>
-            ` : hasCmp ? '<td class="r c-muted">—</td><td class="r c-muted">—</td>' : ''}
-          </tr>`;
-        }).join('') : emptyRow(hasCmp ? 8 : 6)}
-      </tbody>
-      <tfoot>
-        <tr style="border-top:2px solid #30363d;background:#161b22">
-          <td><strong>Total</strong></td>
-          <td class="r"><strong>${fN(totSess)}</strong></td>
-          <td class="r"><strong>${fN(Math.round(totConv))}</strong></td>
-          <td class="r"><strong>${fP(totTX)}</strong></td>
-          <td class="r"><strong class="c-brand">${totCAC !== null ? fR(totCAC) : '—'}</strong></td>
-          <td class="r"><strong class="c-brand">${fR(totSpend)}</strong></td>
-          ${hasCmp ? '<td></td><td></td>' : ''}
-        </tr>
-      </tfoot>
-    </table></div>
-  </div>`;
+  _diarioData = { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp };
+  registerSortRenderer('diario', renderDiarioBody);
+  renderDiarioBody();
 }

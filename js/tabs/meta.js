@@ -18,6 +18,21 @@ function renderMetaSubtabs() {
   </div>`;
 }
 
+function renderMetaCreativeSubtab(id, ads) {
+  const tableId = 'meta-' + id;
+  registerSortRenderer(tableId, () => {
+    if (_metaSubTab === id) document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtabHtml(id, ads);
+  });
+  return renderMetaCreativeSubtabHtml(id, ads);
+}
+
+function renderMetaCreativeSubtabHtml(id, ads) {
+  const tableId = 'meta-' + id;
+  return id === 'topo'
+    ? metaTable(ads, '🟡 Meta · Criativos Topo (Branding)', null, tableId)
+    : metaFundoTable(ads, '🟡 Meta · Criativos Fundo (Conversão)', null, tableId);
+}
+
 async function switchMetaSubTab(id) {
   _metaSubTab = id;
   document.getElementById('m-subtabs').innerHTML = renderMetaSubtabs();
@@ -26,25 +41,25 @@ async function switchMetaSubTab(id) {
 
   body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando criativos…</div>`;
   const cached = _metaCreativos[id];
+  let ads;
   if (cached && cached.start === S.start && cached.end === S.end) {
-    body.innerHTML = cached.html;
-    return;
+    ads = cached.ads;
+  } else {
+    const rows = await supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`);
+    ads = aggMetaByAd(rows);
+    _metaCreativos[id] = { start: S.start, end: S.end, ads };
   }
 
-  const rows = await supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`);
-  const ads = aggMetaByAd(rows);
-  const html = id === 'topo'
-    ? metaTable(ads, '🟡 Meta · Criativos Topo (Branding)', null)
-    : metaFundoTable(ads, '🟡 Meta · Criativos Fundo (Conversão)', null);
-
-  _metaCreativos[id] = { start: S.start, end: S.end, html };
+  const html = renderMetaCreativeSubtab(id, ads);
   if (_metaSubTab === id) body.innerHTML = html;
 }
 
 function renderMetaCampanhas() {
   if (!_metaData) return;
-  const { agg, hasCmp } = _metaData;
+  const { agg } = _metaData;
   const camps = agg.map(r => r.campaign_name);
+  _metaFilter = null;
+  registerSortRenderer('meta', () => renderMetaTable());
 
   document.getElementById('m-subtab-body').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
@@ -59,12 +74,7 @@ function renderMetaCampanhas() {
   <div class="card">
     <div class="card-title">Meta Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
     <div class="table-wrap"><table>
-      <thead><tr>
-        <th>#</th><th>Campanha</th><th class="r">Gasto</th>
-        <th class="r">Cliques</th><th class="r">Impressões</th>
-        <th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>
-        ${hasCmp?'<th class="r">Δ Gasto</th>':''}
-      </tr></thead>
+      <thead><tr id="m-thead"></tr></thead>
       <tbody id="m-tbody"></tbody>
     </table></div>
   </div>`;
@@ -72,11 +82,18 @@ function renderMetaCampanhas() {
   renderMetaTable(null);
 }
 
+let _metaFilter = null;
+
 function renderMetaTable(filterCamp) {
+  if (filterCamp !== undefined) _metaFilter = filterCamp;
   if (!_metaData) return;
   const { agg, cmpAgg, cmpMap, hasCmp } = _metaData;
-  const filtered    = filterCamp ? agg.filter(r => r.campaign_name === filterCamp) : agg;
-  const cmpFiltered = filterCamp ? cmpAgg.filter(r => r.campaign_name === filterCamp) : cmpAgg;
+  const filterVal   = _metaFilter;
+  const filtered0   = filterVal ? agg.filter(r => r.campaign_name === filterVal) : agg;
+  const cmpFiltered = filterVal ? cmpAgg.filter(r => r.campaign_name === filterVal) : cmpAgg;
+
+  const st = getSort('meta', 'spend', 'desc');
+  const filtered = sortRows(filtered0, st.key, st.dir);
 
   const totSpend = sum(filtered,'spend'), totClicks=sum(filtered,'clicks'), totConv=sum(filtered,'conversions');
   const cTotSpend = cmpFiltered.length ? sum(cmpFiltered,'spend')       : undefined;
@@ -88,6 +105,13 @@ function renderMetaTable(filterCamp) {
     kpiCard('Cliques',      totClicks, cTotClick, fN, 'c-green') +
     kpiCard('Conversões',   totConv,   cTotConv,  fN, 'c-blue') +
     kpiCard('CPA Médio', totConv>0?totSpend/totConv:null, (cTotConv&&cTotSpend&&cTotConv>0)?cTotSpend/cTotConv:undefined, fR, 'c-brand', true);
+
+  document.getElementById('m-thead').innerHTML =
+    `<th>#</th>${sortTh('meta','Campanha','campaign_name','asc','')}
+     ${sortTh('meta','Gasto','spend')}${sortTh('meta','Cliques','clicks')}
+     ${sortTh('meta','Impressões','impressions')}${sortTh('meta','CTR','ctr')}
+     ${sortTh('meta','Conv.','conversions')}${sortTh('meta','CPA','cpa')}
+     ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
 
   document.getElementById('m-tbody').innerHTML = filtered.length ? filtered.map((r,i) => {
     const cmp    = cmpMap[r.campaign_name];

@@ -11,7 +11,7 @@ const PRESETS = {
   '7d':   () => { const e=yesterday(); return {s:fmt(addDays(new Date(e),-6)),e}; },
   '14d':  () => { const e=yesterday(); return {s:fmt(addDays(new Date(e),-13)),e}; },
   '30d':  () => { const e=yesterday(); return {s:fmt(addDays(new Date(e),-29)),e}; },
-  mes:    () => { const t=new Date(); const s=new Date(t.getFullYear(),t.getMonth(),1); return {s:fmt(s),e:yesterday()}; },
+  mes:    () => { const t=new Date(); const s=new Date(t.getFullYear(),t.getMonth(),1); const y=addDays(new Date(),-1); const e=y<s?today():fmt(y); return {s:fmt(s),e}; },
   mesant: () => { const t=new Date(); const s=new Date(t.getFullYear(),t.getMonth()-1,1); const e=new Date(t.getFullYear(),t.getMonth(),0); return {s:fmt(s),e:fmt(e)}; },
 };
 
@@ -82,6 +82,8 @@ async function fetchCampDailyAgg(s, e)         { return supaRpc('get_camp_daily_
 async function fetchCampDailyByPlatform(s, e)  { return supaRpc('get_camp_daily_by_platform',    { p_start: s, p_end: e }); }
 async function fetchGA4DailyAgg(s, e)          { return supaRpc('get_ga4_daily_agg',             { p_start: s, p_end: e }); }
 async function fetchGA4ChannelsAgg(s, e)       { return supaRpc('get_ga4_channels_agg',          { p_start: s, p_end: e }); }
+async function fetchLPAgg(s, e)                { return supaRpc('get_ga4_landing_pages_agg',     { p_start: s, p_end: e }); }
+async function fetchGoogleLPAgg(s, e)          { return supaRpc('get_google_landing_pages_agg',  { p_start: s, p_end: e }); }
 
 // Raw — mantidos para compatibilidade (criativos ainda precisam de linha por linha)
 async function fetchCamps(s, e) {
@@ -128,4 +130,51 @@ function loading() {
 
 function emptyRow(cols, msg='Sem dados para o período selecionado') {
   return `<tr><td colspan="${cols}" class="c-muted" style="text-align:center;padding:28px">${msg}</td></tr>`;
+}
+
+// ── Generic sortable tables ──
+// Cada tabela ordenável tem um id próprio: sort state e função de re-render ficam
+// registrados aqui, para que o clique no <th> funcione sem re-buscar os dados.
+const _sortState    = {};
+const _sortRenderers = {};
+
+function registerSortRenderer(tableId, renderFn) {
+  _sortRenderers[tableId] = renderFn;
+}
+
+function getSort(tableId, fallbackKey, fallbackDir='desc') {
+  if (!_sortState[tableId]) _sortState[tableId] = { key: fallbackKey, dir: fallbackDir };
+  return _sortState[tableId];
+}
+
+function onSortClick(tableId, key, defaultDir) {
+  const cur = _sortState[tableId];
+  if (cur && cur.key === key) cur.dir = cur.dir === 'asc' ? 'desc' : 'asc';
+  else _sortState[tableId] = { key, dir: defaultDir };
+  const fn = _sortRenderers[tableId];
+  if (fn) fn();
+}
+
+function sortRows(rows, key, dir) {
+  return rows.slice().sort((a, b) => {
+    let va = a[key], vb = b[key];
+    const bothNumeric = (typeof va === 'number' || va == null) && (typeof vb === 'number' || vb == null);
+    if (bothNumeric) {
+      va = va == null ? -Infinity : va;
+      vb = vb == null ? -Infinity : vb;
+    } else {
+      va = String(va ?? '').toLowerCase();
+      vb = String(vb ?? '').toLowerCase();
+    }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortTh(tableId, label, key, defaultDir='desc', align='r') {
+  const st = getSort(tableId, null, defaultDir);
+  const active = st.key === key;
+  const arrow = active ? (st.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  return `<th class="${align} th-sort${active?' active':''}" onclick="onSortClick('${tableId}','${key}','${defaultDir}')">${label}${arrow}</th>`;
 }
