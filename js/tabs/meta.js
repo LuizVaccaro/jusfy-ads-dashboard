@@ -1,4 +1,76 @@
 let _metaData = null;
+let _metaSubTab = 'campanhas';
+let _metaCreativos = { topo: null, fundo: null };
+
+function metaSubtabBtn(id, label) {
+  const active = _metaSubTab === id;
+  return `<button onclick="switchMetaSubTab('${id}')"
+    style="background:${active ? '#d2992222' : '#161b22'};border:1px solid ${active ? '#d29922' : '#30363d'};
+      color:${active ? '#d29922' : '#8b949e'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .15s">${label}</button>`;
+}
+
+function renderMetaSubtabs() {
+  return `<div style="display:flex;gap:8px;margin-bottom:20px">
+    ${metaSubtabBtn('campanhas', 'Campanhas')}
+    ${metaSubtabBtn('fundo', 'Criativos Fundo')}
+    ${metaSubtabBtn('topo', 'Criativos Topo')}
+  </div>`;
+}
+
+async function switchMetaSubTab(id) {
+  _metaSubTab = id;
+  document.getElementById('m-subtabs').innerHTML = renderMetaSubtabs();
+  const body = document.getElementById('m-subtab-body');
+  if (id === 'campanhas') { renderMetaCampanhas(); return; }
+
+  body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando criativos…</div>`;
+  const cached = _metaCreativos[id];
+  if (cached && cached.start === S.start && cached.end === S.end) {
+    body.innerHTML = cached.html;
+    return;
+  }
+
+  const rows = await supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`);
+  const ads = aggMetaByAd(rows);
+  const html = id === 'topo'
+    ? metaTable(ads, '🟡 Meta · Criativos Topo (Branding)', null)
+    : metaFundoTable(ads, '🟡 Meta · Criativos Fundo (Conversão)', null);
+
+  _metaCreativos[id] = { start: S.start, end: S.end, html };
+  if (_metaSubTab === id) body.innerHTML = html;
+}
+
+function renderMetaCampanhas() {
+  if (!_metaData) return;
+  const { agg, hasCmp } = _metaData;
+  const camps = agg.map(r => r.campaign_name);
+
+  document.getElementById('m-subtab-body').innerHTML = `
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
+    <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
+    <select id="metaCampFilter" onchange="renderMetaTable(this.value||null)"
+      style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+      <option value="">Todas as Campanhas</option>
+      ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+    </select>
+  </div>
+  <div class="kpi-grid cols-4" id="m-kpis" style="margin-bottom:20px"></div>
+  <div class="card">
+    <div class="card-title">Meta Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>#</th><th>Campanha</th><th class="r">Gasto</th>
+        <th class="r">Cliques</th><th class="r">Impressões</th>
+        <th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>
+        ${hasCmp?'<th class="r">Δ Gasto</th>':''}
+      </tr></thead>
+      <tbody id="m-tbody"></tbody>
+    </table></div>
+  </div>`;
+
+  renderMetaTable(null);
+}
 
 function renderMetaTable(filterCamp) {
   if (!_metaData) return;
@@ -36,6 +108,10 @@ function renderMetaTable(filterCamp) {
 
 async function tabMeta() {
   loading();
+  ensureCreativeModal();
+  _metaSubTab = 'campanhas';
+  _metaCreativos = { topo: null, fundo: null };
+
   const [campAgg, cmpCampAgg] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
@@ -53,30 +129,9 @@ async function tabMeta() {
 
   _metaData = { agg, cmpAgg, cmpMap, hasCmp };
 
-  const camps = agg.map(r => r.campaign_name);
-
   document.getElementById('content').innerHTML = `
-  <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
-    <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
-    <select id="metaCampFilter" onchange="renderMetaTable(this.value||null)"
-      style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
-      <option value="">Todas as Campanhas</option>
-      ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
-    </select>
-  </div>
-  <div class="kpi-grid cols-4" id="m-kpis" style="margin-bottom:20px"></div>
-  <div class="card">
-    <div class="card-title">Meta Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>#</th><th>Campanha</th><th class="r">Gasto</th>
-        <th class="r">Cliques</th><th class="r">Impressões</th>
-        <th class="r">CTR</th><th class="r">Conv.</th><th class="r">CPA</th>
-        ${hasCmp?'<th class="r">Δ Gasto</th>':''}
-      </tr></thead>
-      <tbody id="m-tbody"></tbody>
-    </table></div>
-  </div>`;
+    <div id="m-subtabs">${renderMetaSubtabs()}</div>
+    <div id="m-subtab-body"></div>`;
 
-  renderMetaTable(null);
+  renderMetaCampanhas();
 }
