@@ -155,14 +155,14 @@ function showCreative(name, thumb, videoId, managerUrl) {
   const content = document.getElementById('modalContent');
   const link    = document.getElementById('modalLink');
   if (videoId) {
-    content.innerHTML = '<iframe width="100%" height="280" src="https://www.youtube.com/embed/' + videoId + '?autoplay=1" frameborder="0" allow="autoplay;fullscreen" allowfullscreen></iframe>';
+    content.innerHTML = '<iframe width="100%" height="280" src="https://www.youtube.com/embed/' + videoId + '?autoplay=0&mute=1" frameborder="0" allow="fullscreen" allowfullscreen></iframe>';
     link.href = 'https://www.youtube.com/watch?v=' + videoId;
     link.textContent = 'Abrir no YouTube →';
   } else if (managerUrl && managerUrl.includes('instagram.com/p/')) {
     // Instagram embed
     const shortcode = managerUrl.match(/instagram\.com\/p\/([^/?#]+)/)?.[1];
     if (shortcode) {
-      content.innerHTML = '<iframe src="https://www.instagram.com/p/' + shortcode + '/embed/" width="100%" height="380" frameborder="0" scrolling="no" allowtransparency="true" style="border-radius:8px;background:#000"></iframe>';
+      content.innerHTML = '<iframe src="https://www.instagram.com/p/' + shortcode + '/embed/?autoplay=false" width="100%" height="380" frameborder="0" scrolling="no" allowtransparency="true" style="border-radius:8px;background:#000"></iframe>';
     } else {
       content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
     }
