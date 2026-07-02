@@ -108,8 +108,9 @@ function renderMetaTable(filterCamp) {
 
   document.getElementById('m-thead').innerHTML =
     `<th>#</th>${sortTh('meta','Campanha','campaign_name','asc','')}
-     ${sortTh('meta','Gasto','spend')}${sortTh('meta','Cliques','clicks')}
-     ${sortTh('meta','Impressões','impressions')}${sortTh('meta','CTR','ctr')}
+     ${sortTh('meta','Gasto','spend')}${sortTh('meta','Impressões','impressions')}
+     ${sortTh('meta','Cliques','clicks')}${sortTh('meta','CTR','ctr')}
+     ${sortTh('meta','Sessões','sessions')}
      ${sortTh('meta','Conv.','conversions')}${sortTh('meta','CPA','cpa')}
      ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
 
@@ -120,14 +121,15 @@ function renderMetaTable(filterCamp) {
       <td class="c-muted">${i+1}</td>
       <td><strong>${r.campaign_name}</strong></td>
       <td class="r c-brand">${fR(r.spend)}</td>
-      <td class="r">${fN(r.clicks)}</td>
       <td class="r c-muted">${fN(r.impressions)}</td>
+      <td class="r">${fN(r.clicks)}</td>
       <td class="r">${fP(r.ctr)}</td>
+      <td class="r">${fN(r.sessions)}</td>
       <td class="r">${fN(r.conversions)}</td>
       <td class="r ${cpaCls}">${r.cpa?fR(r.cpa):'—'}</td>
       ${hasCmp?`<td class="r">${cmp?deltaHtml(r.spend,cmp.spend):'<span class="d-neu">novo</span>'}</td>`:''}
     </tr>`;
-  }).join('') : emptyRow(hasCmp ? 9 : 8);
+  }).join('') : emptyRow(hasCmp ? 10 : 9);
 }
 
 async function tabMeta() {
@@ -136,18 +138,24 @@ async function tabMeta() {
   _metaSubTab = 'campanhas';
   _metaCreativos = { topo: null, fundo: null };
 
-  const [campAgg, cmpCampAgg] = await Promise.all([
+  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
+    fetchGA4SessionsByCampaign(S.start, S.end),
+    S.compare && S.cmpStart ? fetchGA4SessionsByCampaign(S.cmpStart, S.cmpEnd) : [],
   ]);
 
-  const addMetrics = rows => rows.map(r => ({...r,
+  const sessMap    = Object.fromEntries(ga4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
+  const cmpSessMap = Object.fromEntries(cmpGA4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
+
+  const addMetrics = (rows, sMap) => rows.map(r => ({...r,
     ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,
-    cpa: r.conversions>0 ? r.spend/r.conversions : null
+    cpa: r.conversions>0 ? r.spend/r.conversions : null,
+    sessions: sMap[(r.campaign_name||'').toLowerCase()] || 0,
   }));
 
-  const agg    = addMetrics(campAgg.filter(r=>r.platform==='meta')).sort((a,b)=>b.spend-a.spend);
-  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='meta')) : [];
+  const agg    = addMetrics(campAgg.filter(r=>r.platform==='meta'), sessMap).sort((a,b)=>b.spend-a.spend);
+  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='meta'), cmpSessMap) : [];
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 

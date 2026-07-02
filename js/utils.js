@@ -85,6 +85,7 @@ async function fetchGA4ChannelsAgg(s, e)       { return supaRpc('get_ga4_channel
 async function fetchLPAgg(s, e)                { return supaRpc('get_ga4_landing_pages_agg',     { p_start: s, p_end: e }); }
 async function fetchGoogleLPAgg(s, e)          { return supaRpc('get_google_landing_pages_agg',  { p_start: s, p_end: e }); }
 async function fetchCheckoutAgg(s, e)          { return supaRpc('get_ga4_checkout_pages_agg',    { p_start: s, p_end: e }); }
+async function fetchGA4SessionsByCampaign(s, e) { return supaRpc('get_ga4_sessions_by_campaign', { p_start: s, p_end: e }); }
 
 // Raw — mantidos para compatibilidade (criativos ainda precisam de linha por linha)
 async function fetchCamps(s, e) {

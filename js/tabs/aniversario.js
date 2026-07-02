@@ -202,6 +202,7 @@ function metaTable(ads, title, campaignBadge, tableId) {
       p50Rate: ad.video_p50 / imp * 100,
       p25Rate: ad.video_p25 / imp * 100,
       cpt:     ad.thruplay > 0 ? ad.spend / ad.thruplay : null,
+      freq:    ad.reach > 0 ? ad.impressions / ad.reach : 0,
     };
   });
   const st     = getSort(tableId, 'spend', 'desc');
@@ -216,6 +217,7 @@ function metaTable(ads, title, campaignBadge, tableId) {
       + '<td class="r">' + fR(ad.spend) + '</td>'
       + '<td class="r">' + fN(ad.reach) + '</td>'
       + '<td class="r">' + fN(ad.impressions) + '</td>'
+      + '<td class="r">' + ad.freq.toFixed(2) + 'x</td>'
       + '<td class="r c-green"><strong>' + fN(ad.thruplay) + '</strong><br><span style="font-size:10px;color:#8b949e">' + tpRate.toFixed(1) + '%</span></td>'
       + '<td class="r">' + (cpt !== null ? fR(cpt) : '—') + '</td>'
       + '<td>' + retentionBars(tpRate, p50Rate, p25Rate) + '</td>'
@@ -234,6 +236,7 @@ function metaTable(ads, title, campaignBadge, tableId) {
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
     + sortTh(tableId,'Gasto','spend') + sortTh(tableId,'Alcance','reach') + sortTh(tableId,'Impressões','impressions')
+    + sortTh(tableId,'Frequência','freq')
     + sortTh(tableId,'ThruPlay','thruplay') + sortTh(tableId,'Custo/ThruPlay','cpt')
     + '<th>Retenção</th>' + sortTh(tableId,'Views 25%','video_p25') + sortTh(tableId,'Views 50%','video_p50')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
@@ -244,8 +247,9 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
   const withMetrics = ads.map(ad => {
     const imp = ad.impressions || 1;
     return { ...ad,
-      ctr: ad.clicks / imp * 100,
-      cpa: ad.conversions > 0 ? ad.spend / ad.conversions : null,
+      ctr:  ad.clicks / imp * 100,
+      cpa:  ad.conversions > 0 ? ad.spend / ad.conversions : null,
+      freq: ad.reach > 0 ? ad.impressions / ad.reach : 0,
     };
   });
   const st     = getSort(tableId, 'spend', 'desc');
@@ -261,6 +265,7 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
       + '<td class="r c-brand">' + fR(ad.spend) + '</td>'
       + '<td class="r">' + fN(ad.clicks) + '</td>'
       + '<td class="r c-muted">' + fN(ad.impressions) + '</td>'
+      + '<td class="r">' + ad.freq.toFixed(2) + 'x</td>'
       + '<td class="r">' + fP(ctr) + '</td>'
       + '<td class="r"><strong>' + fN(ad.conversions) + '</strong></td>'
       + '<td class="r ' + cpaCls + '">' + (cpa !== null ? fR(cpa) : '—') + '</td>'
@@ -277,6 +282,7 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
     + sortTh(tableId,'Gasto','spend') + sortTh(tableId,'Cliques','clicks') + sortTh(tableId,'Impressões','impressions')
+    + sortTh(tableId,'Frequência','freq')
     + sortTh(tableId,'CTR','ctr') + sortTh(tableId,'Conv.','conversions') + sortTh(tableId,'CPA','cpa')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }

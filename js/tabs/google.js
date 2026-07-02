@@ -25,8 +25,9 @@ function renderGoogleTable(filterCamp) {
 
   document.getElementById('g-thead').innerHTML =
     `<th>#</th>${sortTh('google','Campanha','campaign_name','asc','')}
-     ${sortTh('google','Gasto','spend')}${sortTh('google','Cliques','clicks')}
-     ${sortTh('google','Impressões','impressions')}${sortTh('google','CTR','ctr')}
+     ${sortTh('google','Gasto','spend')}${sortTh('google','Impressões','impressions')}
+     ${sortTh('google','Cliques','clicks')}${sortTh('google','CTR','ctr')}
+     ${sortTh('google','Sessões','sessions')}
      ${sortTh('google','Conv.','conversions')}${sortTh('google','CPA','cpa')}
      ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
 
@@ -37,30 +38,37 @@ function renderGoogleTable(filterCamp) {
       <td class="c-muted">${i+1}</td>
       <td><strong>${r.campaign_name}</strong></td>
       <td class="r c-brand">${fR(r.spend)}</td>
-      <td class="r">${fN(r.clicks)}</td>
       <td class="r c-muted">${fN(r.impressions)}</td>
+      <td class="r">${fN(r.clicks)}</td>
       <td class="r">${fP(r.ctr)}</td>
+      <td class="r">${fN(r.sessions)}</td>
       <td class="r">${fN(r.conversions)}</td>
       <td class="r ${cpaCls}">${r.cpa?fR(r.cpa):'—'}</td>
       ${hasCmp?`<td class="r">${cmp?deltaHtml(r.spend,cmp.spend):'<span class="d-neu">novo</span>'}</td>`:''}
     </tr>`;
-  }).join('') : emptyRow(hasCmp ? 9 : 8);
+  }).join('') : emptyRow(hasCmp ? 10 : 9);
 }
 
 async function tabGoogle() {
   loading();
-  const [campAgg, cmpCampAgg] = await Promise.all([
+  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
+    fetchGA4SessionsByCampaign(S.start, S.end),
+    S.compare && S.cmpStart ? fetchGA4SessionsByCampaign(S.cmpStart, S.cmpEnd) : [],
   ]);
 
-  const addMetrics = rows => rows.map(r => ({...r,
+  const sessMap    = Object.fromEntries(ga4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
+  const cmpSessMap = Object.fromEntries(cmpGA4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
+
+  const addMetrics = (rows, sMap) => rows.map(r => ({...r,
     ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,
-    cpa: r.conversions>0 ? r.spend/r.conversions : null
+    cpa: r.conversions>0 ? r.spend/r.conversions : null,
+    sessions: sMap[(r.campaign_name||'').toLowerCase()] || 0,
   }));
 
-  const agg    = addMetrics(campAgg.filter(r=>r.platform==='google_ads')).sort((a,b)=>b.spend-a.spend);
-  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='google_ads')) : [];
+  const agg    = addMetrics(campAgg.filter(r=>r.platform==='google_ads'), sessMap).sort((a,b)=>b.spend-a.spend);
+  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='google_ads'), cmpSessMap) : [];
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 
