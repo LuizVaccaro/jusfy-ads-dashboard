@@ -20,15 +20,15 @@ function renderGoogleTable(filterCamp) {
   document.getElementById('g-kpis').innerHTML =
     kpiCard('Investimento', totSpend, cTotSpend, fR, 'c-blue') +
     kpiCard('Cliques',      totClicks, cTotClick, fN, 'c-green') +
-    kpiCard('Conversões',   totConv,   cTotConv,  fN, 'c-yellow') +
-    kpiCard('CPA Médio', totConv>0?totSpend/totConv:null, (cTotConv&&cTotSpend&&cTotConv>0)?cTotSpend/cTotConv:undefined, fR, 'c-brand', true);
+    kpiCard('Cadastros Reais', totConv, cTotConv, fN, 'c-yellow') +
+    kpiCard('CAC Real Médio', totConv>0?totSpend/totConv:null, (cTotConv&&cTotSpend&&cTotConv>0)?cTotSpend/cTotConv:undefined, fR, 'c-brand', true);
 
   document.getElementById('g-thead').innerHTML =
     `<th>#</th>${sortTh('google','Campanha','campaign_name','asc','')}
      ${sortTh('google','Gasto','spend')}${sortTh('google','Impressões','impressions')}
      ${sortTh('google','Cliques','clicks')}${sortTh('google','Sessões','sessions')}
      ${sortTh('google','CTR','ctr')}${sortTh('google','Tx Conversão','txConv')}
-     ${sortTh('google','Conv.','conversions')}${sortTh('google','CPA','cpa')}
+     ${sortTh('google','Cadastros','conversions')}${sortTh('google','CAC Real','cpa')}
      ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
 
   document.getElementById('g-tbody').innerHTML = filtered.length ? filtered.map((r,i) => {
@@ -52,11 +52,13 @@ function renderGoogleTable(filterCamp) {
 
 async function tabGoogle() {
   loading();
-  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp] = await Promise.all([
+  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
     fetchGA4SessionsByCampaign(S.start, S.end),
     S.compare && S.cmpStart ? fetchGA4SessionsByCampaign(S.cmpStart, S.cmpEnd) : [],
+    fetchJusfyConversionsByCampaign(S.start, S.end),
+    S.compare && S.cmpStart ? fetchJusfyConversionsByCampaign(S.cmpStart, S.cmpEnd) : [],
   ]);
 
   const sessMap    = Object.fromEntries(ga4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
@@ -72,8 +74,12 @@ async function tabGoogle() {
     };
   });
 
-  const agg    = addMetrics(campAgg.filter(r=>r.platform==='google_ads'), sessMap).sort((a,b)=>b.spend-a.spend);
-  const cmpAgg = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='google_ads'), cmpSessMap) : [];
+  const aggRaw    = addMetrics(campAgg.filter(r=>r.platform==='google_ads'), sessMap);
+  const cmpAggRaw = cmpCampAgg.length ? addMetrics(cmpCampAgg.filter(r=>r.platform==='google_ads'), cmpSessMap) : [];
+
+  // Substitui conversões/CPA de plataforma pelas conversões reais do Metabase (jusfy_conversions_daily)
+  const agg    = mergeRealConversions(aggRaw, convRows, 'google_ads');
+  const cmpAgg = cmpAggRaw.length ? mergeRealConversions(cmpAggRaw, cmpConvRows, 'google_ads') : [];
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 

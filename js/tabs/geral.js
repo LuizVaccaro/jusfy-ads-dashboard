@@ -1,12 +1,17 @@
 async function tabGeral() {
   loading();
-  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels] = await Promise.all([
+  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     fetchCampDailyByPlatform(S.start, S.end),
     fetchGA4ChannelsAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd)        : [],
     S.compare && S.cmpStart ? fetchGA4ChannelsAgg(S.cmpStart, S.cmpEnd) : [],
+    fetchJusfyConversionsTotals(S.start, S.end),
   ]);
+
+  const realByChannel = aggregateRealConversionsByChannel(realConvTotals);
+  const realTotal = Object.values(realByChannel).reduce((s,v)=>s+v.clientes_unicos, 0);
+  const channelOrder = ['Google Ads','Meta Ads','Bing Ads','Orgânico','Outros'];
 
   const addMetrics = rows => rows.map(r => ({...r,
     ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,
@@ -105,7 +110,30 @@ async function tabGeral() {
   <div class="kpi-grid cols-3" style="margin-bottom:20px">
     ${kpiCard('CTR Médio',        ctr,      undefined,  fP, 'c-muted')}
     ${kpiCard('Campanhas Ativas', new Set(agg.map(r=>r.campaign_name)).size, undefined, fN, 'c-muted')}
-    ${kpiCard('Conv. via Plataformas', sum(agg,'conversions'), undefined, fN, 'c-blue')}
+    ${kpiCard('Conversões Totais (Metabase)', realTotal, undefined, fN, 'c-blue')}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Conversões Reais por Canal (Metabase)</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Canal</th><th class="r">Clientes Únicos</th><th class="r">% do Total</th></tr></thead>
+      <tbody>
+        ${channelOrder.map(ch => {
+          const v = realByChannel[ch] || { clientes_unicos: 0 };
+          const pct = realTotal>0 ? v.clientes_unicos/realTotal*100 : 0;
+          return `<tr>
+            <td><strong>${ch}</strong></td>
+            <td class="r c-blue">${fN(v.clientes_unicos)}</td>
+            <td class="r c-muted">${fP(pct)}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="border-top:1px solid #30363d">
+          <td><strong>Total</strong></td>
+          <td class="r c-blue"><strong>${fN(realTotal)}</strong></td>
+          <td class="r c-muted">100%</td>
+        </tr>
+      </tbody>
+    </table></div>
   </div>
 
   <div class="grid-2" style="margin-bottom:16px">

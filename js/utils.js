@@ -86,6 +86,131 @@ async function fetchLPAgg(s, e)                { return supaRpc('get_ga4_landing
 async function fetchGoogleLPAgg(s, e)          { return supaRpc('get_google_landing_pages_agg',  { p_start: s, p_end: e }); }
 async function fetchCheckoutAgg(s, e)          { return supaRpc('get_ga4_checkout_pages_agg',    { p_start: s, p_end: e }); }
 async function fetchGA4SessionsByCampaign(s, e) { return supaRpc('get_ga4_sessions_by_campaign', { p_start: s, p_end: e }); }
+async function fetchJusfyConversionsByCampaign(s, e) { return supaRpc('get_jusfy_conversions_by_campaign', { p_start: s, p_end: e }); }
+async function fetchJusfyConversionsTotals(s, e) { return supaRpc('get_jusfy_conversions_totals', { p_start: s, p_end: e }); }
+
+// ── Match de conversões reais (Metabase) contra campanhas de ads ──
+// referral no Metabase é um valor solto por canal (Google/Meta/Bing/Affiliate/Others/OAB/ChatGPT/TikTok,
+// nunca em branco) — tudo que não bate nesses padrões é tráfego orgânico/não pago e fica de fora por definição.
+const PLATFORM_REFERRAL_PATTERNS = {
+  google_ads: /google|adwords/i,
+  meta:       /meta|fb|facebook|v4facebookads/i,
+  bing:       /bing/i,
+};
+
+// Classifica uma linha de jusfy_conversions_daily em um canal de alto nível, pra bater com o
+// controle manual. Orgânico é decidido primeiro por tipo_de_trafego (não por referral) — "Google"
+// aparece tanto em busca orgânica quanto em campanha paga, então o referral sozinho não diferencia.
+function classifyRealConversionChannel(row) {
+  const tipo = (row.tipo_de_trafego||'').toLowerCase();
+  if (tipo.startsWith('org')) return 'Orgânico';
+  const referral = row.referral || '';
+  if (PLATFORM_REFERRAL_PATTERNS.google_ads.test(referral)) return 'Google Ads';
+  if (PLATFORM_REFERRAL_PATTERNS.meta.test(referral))       return 'Meta Ads';
+  if (PLATFORM_REFERRAL_PATTERNS.bing.test(referral))       return 'Bing Ads';
+  return 'Outros';
+}
+
+// Agrega saída de get_jusfy_conversions_totals em totais por canal.
+function aggregateRealConversionsByChannel(rows) {
+  const byChannel = {};
+  for (const r of rows||[]) {
+    const ch = classifyRealConversionChannel(r);
+    if (!byChannel[ch]) byChannel[ch] = { clientes_unicos: 0 };
+    byChannel[ch].clientes_unicos += +r.clientes_unicos || 0;
+  }
+  return byChannel;
+}
+
+// Vocabulário de features conhecidas nos nomes de campanha (ex: google_nonbrand_vendas_search_<feature>).
+// Usado quando o utm_campaign do Metabase não bate com o nome exato da campanha (DSA/PMax/JusFinder
+// e nomes de anúncio entre colchetes só carregam a feature, não o nome completo da campanha).
+// "institucional" fica por último de propósito: nomes como "[ONGOING]...Jusprocessos (Institucional)"
+// contêm as duas palavras, e a feature específica (jusprocessos) deve ganhar da genérica (institucional).
+const FEATURE_KEYWORDS = [
+  'jusfinder','dsa','pmax','jusgpt','jusprocessos','jusrevisional',
+  'risprudencia','justrabalhista','juscalc','oabsp','oabmg','oabrj','oabrs',
+  'institucional',
+];
+
+// Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
+// (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
+// ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,
+// jusfinder_oabrj e a variante de teste) e o Metabase só consegue diferenciar por essa feature,
+// elas são mescladas em 1 linha só — não dá pra inventar um split que o Metabase não fornece.
+function mergeRealConversions(campaignRows, conversionRows, platformKey) {
+  const pattern = PLATFORM_REFERRAL_PATTERNS[platformKey];
+  const convs = (conversionRows||[]).filter(r => pattern.test(r.referral||''));
+
+  const nameLower  = c => (c.campaign_name||'').toLowerCase();
+  const keywordsOf = c => FEATURE_KEYWORDS.filter(k => nameLower(c).includes(k));
+
+  // keyword -> campanhas (do período atual) cujo nome contém essa keyword
+  const keywordToCampaigns = {};
+  campaignRows.forEach(c => keywordsOf(c).forEach(k => {
+    (keywordToCampaigns[k] = keywordToCampaigns[k] || []).push(c);
+  }));
+
+  // Uma keyword só vira "bucket" de verdade se cobrir mais de 1 campanha do período atual —
+  // isso já cobre o caso de hoje (jusfinder x3) e se auto-ajusta se surgir uma 2ª campanha DSA/PMax.
+  const groupIdOf = c => {
+    const shared = keywordsOf(c).filter(k => keywordToCampaigns[k].length > 1);
+    return shared.length ? shared[0] : `campaign:${nameLower(c)}`;
+  };
+
+  const groups = {}; // groupId -> campaignRow[]
+  campaignRows.forEach(c => {
+    const g = groupIdOf(c);
+    (groups[g] = groups[g] || []).push(c);
+  });
+
+  // Resolve o groupId de um utm_campaign do Metabase SEMPRE via groupIdOf de uma campanha real,
+  // nunca retornando a keyword crua — senão o id não bate com a chave usada em `groups`.
+  const resolveGroupId = (utm) => {
+    const lower = (utm||'').trim().toLowerCase();
+    if (!lower) return null;
+    const exact = campaignRows.find(c => nameLower(c) === lower);
+    if (exact) return groupIdOf(exact);
+    const candidates = FEATURE_KEYWORDS.filter(k => lower.includes(k) && keywordToCampaigns[k]);
+    if (candidates.length > 1) {
+      console.warn(`[realConv] utm_campaign "${utm}" ambíguo entre features: ${candidates.join(', ')} — usando "${candidates[0]}"`);
+    }
+    if (!candidates.length) return null;
+    return groupIdOf(keywordToCampaigns[candidates[0]][0]);
+  };
+
+  const realByGroup = {}; // groupId -> {clientes}
+  convs.forEach(r => {
+    const gid = resolveGroupId(r.utm_campaign);
+    if (!gid) {
+      console.warn(`[realConv][${platformKey}] utm_campaign sem campanha correspondente: "${r.utm_campaign}" (referral="${r.referral}")`);
+      return;
+    }
+    if (!realByGroup[gid]) realByGroup[gid] = { clientes: 0 };
+    realByGroup[gid].clientes += +r.clientes_unicos || 0;
+  });
+
+  const out = [];
+  for (const gid in groups) {
+    const members = groups[gid];
+    const real = realByGroup[gid] || { clientes: 0 };
+    const base = members.length === 1
+      ? { ...members[0] }
+      : {
+          campaign_name: `🔗 ${gid} (${members.length} campanhas agregadas)`,
+          spend:       sum(members, 'spend'),
+          clicks:      sum(members, 'clicks'),
+          impressions: sum(members, 'impressions'),
+          sessions:    sum(members, 'sessions'),
+        };
+    base.conversions = real.clientes;
+    base.cpa = real.clientes > 0 ? base.spend / real.clientes : null;
+    base.ctr = base.impressions > 0 ? base.clicks / base.impressions * 100 : 0;
+    base.txConv = base.sessions > 0 ? real.clientes / base.sessions * 100 : 0;
+    out.push(base);
+  }
+  return out.sort((a,b) => b.spend - a.spend);
+}
 
 // Raw — mantidos para compatibilidade (criativos ainda precisam de linha por linha)
 async function fetchCamps(s, e) {
