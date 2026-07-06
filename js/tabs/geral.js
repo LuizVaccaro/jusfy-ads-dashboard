@@ -1,17 +1,21 @@
 async function tabGeral() {
   loading();
-  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals] = await Promise.all([
+  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     fetchCampDailyByPlatform(S.start, S.end),
     fetchGA4ChannelsAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd)        : [],
     S.compare && S.cmpStart ? fetchGA4ChannelsAgg(S.cmpStart, S.cmpEnd) : [],
     fetchJusfyConversionsTotals(S.start, S.end),
+    fetchCamps(S.start, S.end),
   ]);
 
-  const realByChannel = aggregateRealConversionsByChannel(realConvTotals);
+  // Lookup por nome/campaign_id, pra reclassificar conversões cujo referral no Metabase veio errado
+  // (Affiliate/Others) mas o utm_campaign é claramente de uma campanha paga real.
+  const campaignLookup = buildCampaignLookup(campsRaw);
+  const realByChannel = aggregateRealConversionsByChannel(realConvTotals, campaignLookup);
   const realTotal = Object.values(realByChannel).reduce((s,v)=>s+v.clientes_unicos, 0);
-  const channelOrder = ['Google Ads','Meta Ads','Bing Ads','Orgânico','Outros'];
+  const channelOrder = ['Google Ads','Meta Ads','Bing Ads','Orgânico','Social','Comunidade','CRM','ChatGPT','Outros'];
 
   const addMetrics = rows => rows.map(r => ({...r,
     ctr: r.impressions>0 ? r.clicks/r.impressions*100 : 0,

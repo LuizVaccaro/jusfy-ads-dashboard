@@ -105,30 +105,6 @@ const PLATFORM_REFERRAL_PATTERNS = {
   bing:       /bing/i,
 };
 
-// Classifica uma linha de jusfy_conversions_daily em um canal de alto nível, pra bater com o
-// controle manual. Orgânico é decidido primeiro por tipo_de_trafego (não por referral) — "Google"
-// aparece tanto em busca orgânica quanto em campanha paga, então o referral sozinho não diferencia.
-function classifyRealConversionChannel(row) {
-  const tipo = (row.tipo_de_trafego||'').toLowerCase();
-  if (tipo.startsWith('org')) return 'Orgânico';
-  const referral = row.referral || '';
-  if (PLATFORM_REFERRAL_PATTERNS.google_ads.test(referral)) return 'Google Ads';
-  if (PLATFORM_REFERRAL_PATTERNS.meta.test(referral))       return 'Meta Ads';
-  if (PLATFORM_REFERRAL_PATTERNS.bing.test(referral))       return 'Bing Ads';
-  return 'Outros';
-}
-
-// Agrega saída de get_jusfy_conversions_totals em totais por canal.
-function aggregateRealConversionsByChannel(rows) {
-  const byChannel = {};
-  for (const r of rows||[]) {
-    const ch = classifyRealConversionChannel(r);
-    if (!byChannel[ch]) byChannel[ch] = { clientes_unicos: 0 };
-    byChannel[ch].clientes_unicos += +r.clientes_unicos || 0;
-  }
-  return byChannel;
-}
-
 // Vocabulário de features conhecidas nos nomes de campanha (ex: google_nonbrand_vendas_search_<feature>).
 // Usado quando o utm_campaign do Metabase não bate com o nome exato da campanha (DSA/PMax/JusFinder
 // e nomes de anúncio entre colchetes só carregam a feature, não o nome completo da campanha).
@@ -140,14 +116,89 @@ const FEATURE_KEYWORDS = [
   'institucional',
 ];
 
+// Categorias "de conteúdo" que o Metabase já marca via marketing_category — não são plataforma de
+// ads, então não fazem sentido cair em "Outros" quando existe um rótulo mais específico.
+const CONTENT_CATEGORIES = ['Social', 'Comunidade', 'CRM', 'ChatGPT'];
+
+// Monta um índice (por plataforma) de nomes de campanha + campaign_id, a partir de linhas cruas de
+// campaign_daily (com campaign_id — get_camp_agg não tem esse campo, por isso pedimos fetchCamps).
+// Usado pra corrigir casos em que o Metabase gravou o referral errado (Affiliate/Others) mas o
+// utm_campaign é claramente uma campanha paga (nome completo ou o próprio campaign_id numérico).
+function buildCampaignLookup(campaignRows) {
+  const lookup = {
+    google_ads: { names: new Set(), ids: new Set() },
+    meta:       { names: new Set(), ids: new Set() },
+  };
+  for (const r of campaignRows||[]) {
+    const bucket = lookup[r.platform];
+    if (!bucket) continue;
+    if (r.campaign_name) bucket.names.add(r.campaign_name.toLowerCase());
+    if (r.campaign_id != null) bucket.ids.add(String(r.campaign_id));
+  }
+  return lookup;
+}
+
+// Resolve um utm_campaign pra 'Google Ads'/'Meta Ads' usando o lookup acima — por nome exato,
+// campaign_id exato, ou feature keyword compartilhada com alguma campanha real daquela plataforma.
+// Retorna null se não achar nada (aí quem chamou decide o fallback).
+function resolveAdPlatformForUtm(utm, lookup) {
+  if (!lookup) return null;
+  const val = (utm||'').trim().toLowerCase();
+  if (!val) return null;
+  if (lookup.google_ads.names.has(val) || lookup.google_ads.ids.has(val)) return 'Google Ads';
+  if (lookup.meta.names.has(val)       || lookup.meta.ids.has(val))       return 'Meta Ads';
+  // Bing usa a mesma convenção de nomes (bing_nonbrand_vendas_search_<feature>) — não tenta casar
+  // por keyword nesse caso, senão "bing_..._jusfinder" seria roubado pro bucket do Google.
+  if (val.startsWith('bing_') || PLATFORM_REFERRAL_PATTERNS.bing.test(val)) return null;
+  for (const kw of FEATURE_KEYWORDS) {
+    if (!val.includes(kw)) continue;
+    if ([...lookup.google_ads.names].some(n => n.includes(kw))) return 'Google Ads';
+    if ([...lookup.meta.names].some(n => n.includes(kw)))       return 'Meta Ads';
+  }
+  return null;
+}
+
+// Classifica uma linha de jusfy_conversions_daily em um canal de alto nível, pra bater com o
+// controle manual. `campaignLookup` (opcional, de buildCampaignLookup) tem prioridade — um
+// utm_campaign que bate com nome/ID de campanha real vale mais que o referral, que às vezes vem
+// errado (Affiliate/Others em cadastros que na verdade vieram de uma campanha paga). Sem lookup,
+// cai no referral; o que sobrar vira Orgânico, uma categoria de conteúdo conhecida, ou Outros.
+function classifyRealConversionChannel(row, campaignLookup) {
+  const resolved = resolveAdPlatformForUtm(row.utm_campaign, campaignLookup);
+  if (resolved) return resolved;
+
+  const tipo = (row.tipo_de_trafego||'').toLowerCase();
+  if (tipo.startsWith('org')) return 'Orgânico';
+  const referral = row.referral || '';
+  if (PLATFORM_REFERRAL_PATTERNS.google_ads.test(referral)) return 'Google Ads';
+  if (PLATFORM_REFERRAL_PATTERNS.meta.test(referral))       return 'Meta Ads';
+  if (PLATFORM_REFERRAL_PATTERNS.bing.test(referral))       return 'Bing Ads';
+  if (CONTENT_CATEGORIES.includes(row.marketing_category))  return row.marketing_category;
+  return 'Outros';
+}
+
+// Agrega saída de get_jusfy_conversions_totals em totais por canal.
+function aggregateRealConversionsByChannel(rows, campaignLookup) {
+  const byChannel = {};
+  for (const r of rows||[]) {
+    const ch = classifyRealConversionChannel(r, campaignLookup);
+    if (!byChannel[ch]) byChannel[ch] = { clientes_unicos: 0 };
+    byChannel[ch].clientes_unicos += +r.clientes_unicos || 0;
+  }
+  return byChannel;
+}
+
 // Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
 // (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
 // ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,
 // jusfinder_oabrj e a variante de teste) e o Metabase só consegue diferenciar por essa feature,
 // elas são mescladas em 1 linha só — não dá pra inventar um split que o Metabase não fornece.
 function mergeRealConversions(campaignRows, conversionRows, platformKey) {
-  const pattern = PLATFORM_REFERRAL_PATTERNS[platformKey];
-  const convs = (conversionRows||[]).filter(r => pattern.test(r.referral||''));
+  // Não filtramos por referral aqui: o Metabase às vezes grava o referral errado (Affiliate/Others)
+  // em cadastros que vieram de uma campanha paga de verdade — o nome/feature da campanha é o sinal
+  // mais confiável. FEATURE_KEYWORDS é específico o suficiente por plataforma pra não gerar colisão
+  // (campanhas do Meta não contêm "jusfinder"/"dsa"/"pmax" etc., por exemplo).
+  const convs = conversionRows||[];
 
   const nameLower  = c => (c.campaign_name||'').toLowerCase();
   const keywordsOf = c => FEATURE_KEYWORDS.filter(k => nameLower(c).includes(k));

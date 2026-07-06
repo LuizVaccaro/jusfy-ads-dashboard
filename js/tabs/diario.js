@@ -16,10 +16,10 @@ function spendByDate(campRows, channelFilter, categoryFilter) {
   return m;
 }
 
-function convByDate(convRows, channelFilter, categoryFilter) {
+function convByDate(convRows, channelFilter, categoryFilter, campaignLookup) {
   const m = {};
   for (const r of convRows) {
-    const ch = classifyRealConversionChannel(r);
+    const ch = classifyRealConversionChannel(r, campaignLookup);
     if (channelFilter && ch !== channelFilter) continue;
     if (categoryFilter && (r.marketing_category||'') !== categoryFilter) continue;
     if (!m[r.date]) m[r.date] = 0;
@@ -35,13 +35,13 @@ function sessionsByDate(rows) {
 }
 
 function buildDiarioView(data, channelFilter, categoryFilter) {
-  const { campsRaw, convDaily, ga4, cmpCampsRaw, cmpConvDaily, cmpGA4, hasCmpBase } = data;
+  const { campsRaw, convDaily, ga4, cmpCampsRaw, cmpConvDaily, cmpGA4, hasCmpBase, campaignLookup } = data;
 
   const spendMap    = spendByDate(campsRaw, channelFilter, categoryFilter);
-  const convMap     = convByDate(convDaily, channelFilter, categoryFilter);
+  const convMap     = convByDate(convDaily, channelFilter, categoryFilter, campaignLookup);
   const ga4Map      = sessionsByDate(ga4);
   const cmpSpendMap = spendByDate(cmpCampsRaw, channelFilter, categoryFilter);
-  const cmpConvMap  = convByDate(cmpConvDaily, channelFilter, categoryFilter);
+  const cmpConvMap  = convByDate(cmpConvDaily, channelFilter, categoryFilter, campaignLookup);
   const cmpGa4Map   = sessionsByDate(cmpGA4);
 
   const dates = [...new Set([...Object.keys(spendMap), ...Object.keys(ga4Map), ...Object.keys(convMap)])].sort().reverse();
@@ -183,7 +183,9 @@ async function tabDiario() {
 
   const hasCmpBase = S.compare && !!S.cmpStart && cmpCampsRaw.length > 0;
 
-  _diarioData = { campsRaw, ga4, cmpCampsRaw, cmpGA4, convDaily, cmpConvDaily, hasCmpBase };
+  const campaignLookup = buildCampaignLookup(campsRaw);
+
+  _diarioData = { campsRaw, ga4, cmpCampsRaw, cmpGA4, convDaily, cmpConvDaily, hasCmpBase, campaignLookup };
   _diarioChannelFilter = null;
   _diarioCategoryFilter = null;
   registerSortRenderer('diario', () => renderDiarioBody());
