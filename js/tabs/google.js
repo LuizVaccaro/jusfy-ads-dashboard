@@ -1,13 +1,17 @@
 let _googleData = null;
 let _googleFilter = null;
+let _googleCategoryFilter = null;
 
-function renderGoogleTable(filterCamp) {
+function renderGoogleTable(filterCamp, filterCategory) {
   if (filterCamp !== undefined) _googleFilter = filterCamp;
+  if (filterCategory !== undefined) _googleCategoryFilter = filterCategory;
   if (!_googleData) return;
   const { agg, cmpAgg, cmpMap, hasCmp } = _googleData;
-  const filterVal   = _googleFilter;
-  const filtered0   = filterVal ? agg.filter(r => r.campaign_name === filterVal) : agg;
-  const cmpFiltered = filterVal ? cmpAgg.filter(r => r.campaign_name === filterVal) : cmpAgg;
+  const filterVal  = _googleFilter;
+  const catVal     = _googleCategoryFilter;
+  const matches    = r => (!filterVal || r.campaign_name === filterVal) && (!catVal || campaignCategory(r.campaign_name) === catVal);
+  const filtered0   = agg.filter(matches);
+  const cmpFiltered = cmpAgg.filter(matches);
 
   const st = getSort('google', 'spend', 'desc');
   const filtered = sortRows(filtered0, st.key, st.dir);
@@ -85,18 +89,30 @@ async function tabGoogle() {
 
   _googleData = { agg, cmpAgg, cmpMap, hasCmp };
   _googleFilter = null;
+  _googleCategoryFilter = null;
   registerSortRenderer('google', () => renderGoogleTable());
 
   const camps = agg.map(r => r.campaign_name);
 
   document.getElementById('content').innerHTML = `
-  <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
-    <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
-    <select id="googleCampFilter" onchange="renderGoogleTable(this.value||null)"
-      style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
-      <option value="">Todas as Campanhas</option>
-      ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
-    </select>
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
+      <select id="googleCampFilter" onchange="renderGoogleTable(this.value||null, undefined)"
+        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+        <option value="">Todas as Campanhas</option>
+        ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Categoria</label>
+      <select id="googleCategoryFilter" onchange="renderGoogleTable(undefined, this.value||null)"
+        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        <option value="">Todas as Categorias</option>
+        <option value="Non brand">Non brand</option>
+        <option value="Brand Search">Brand Search</option>
+      </select>
+    </div>
   </div>
   <div class="kpi-grid cols-4" id="g-kpis" style="margin-bottom:20px"></div>
   <div class="card">

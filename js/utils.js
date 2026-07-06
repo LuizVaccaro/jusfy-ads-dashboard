@@ -44,6 +44,12 @@ const fP = n => n!=null&&!isNaN(n) ? Number(n).toFixed(2)+'%' : '—';
 // ── Data helpers ──
 const sum = (arr, k) => arr.reduce((s,r)=>s+(+r[k]||0), 0);
 
+// Categoria da campanha (Non brand / Brand Search), derivada do nome — segue a mesma convenção
+// de nomenclatura já usada (google_brandsearch_vendas_search_... vs google_nonbrand_vendas_...).
+function campaignCategory(campaignName) {
+  return (campaignName||'').toLowerCase().includes('brandsearch') ? 'Brand Search' : 'Non brand';
+}
+
 function aggCamps(rows) {
   const m = {};
   for (const r of rows) {
@@ -88,6 +94,7 @@ async function fetchCheckoutAgg(s, e)          { return supaRpc('get_ga4_checkou
 async function fetchGA4SessionsByCampaign(s, e) { return supaRpc('get_ga4_sessions_by_campaign', { p_start: s, p_end: e }); }
 async function fetchJusfyConversionsByCampaign(s, e) { return supaRpc('get_jusfy_conversions_by_campaign', { p_start: s, p_end: e }); }
 async function fetchJusfyConversionsTotals(s, e) { return supaRpc('get_jusfy_conversions_totals', { p_start: s, p_end: e }); }
+async function fetchJusfyConversionsDailyAgg(s, e) { return supaRpc('get_jusfy_conversions_daily_agg', { p_start: s, p_end: e }); }
 
 // ── Match de conversões reais (Metabase) contra campanhas de ads ──
 // referral no Metabase é um valor solto por canal (Google/Meta/Bing/Affiliate/Others/OAB/ChatGPT/TikTok,
