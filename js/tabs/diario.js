@@ -9,6 +9,7 @@ function spendByDate(campRows, channelFilter, categoryFilter) {
   for (const r of campRows) {
     if (channelFilter === 'Google Ads' && r.platform !== 'google_ads') continue;
     if (channelFilter === 'Meta Ads'   && r.platform !== 'meta')       continue;
+    if (channelFilter === 'Bing Ads'   && r.platform !== 'bing_ads')   continue;
     if (categoryFilter && campaignCategory(r.campaign_name) !== categoryFilter) continue;
     if (!m[r.date]) m[r.date] = 0;
     m[r.date] += +r.spend || 0;
@@ -100,6 +101,7 @@ function renderDiarioBody(filterChannel, filterCategory) {
         <option value="Orgânico"  ${_diarioChannelFilter==='Orgânico'?'selected':''}>Orgânico</option>
         <option value="Google Ads" ${_diarioChannelFilter==='Google Ads'?'selected':''}>Google Ads</option>
         <option value="Meta Ads"   ${_diarioChannelFilter==='Meta Ads'?'selected':''}>Meta Ads</option>
+        <option value="Bing Ads"   ${_diarioChannelFilter==='Bing Ads'?'selected':''}>Bing Ads</option>
       </select>
     </div>
     <div style="display:flex;align-items:center;gap:10px">

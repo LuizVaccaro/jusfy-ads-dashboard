@@ -102,7 +102,7 @@ async function fetchJusfyConversionsDailyAgg(s, e) { return supaRpc('get_jusfy_c
 const PLATFORM_REFERRAL_PATTERNS = {
   google_ads: /google|adwords/i,
   meta:       /meta|fb|facebook|v4facebookads/i,
-  bing:       /bing/i,
+  bing_ads:   /bing/i,
 };
 
 // Vocabulário de features conhecidas nos nomes de campanha (ex: google_nonbrand_vendas_search_<feature>).
@@ -128,6 +128,7 @@ function buildCampaignLookup(campaignRows) {
   const lookup = {
     google_ads: { names: new Set(), ids: new Set() },
     meta:       { names: new Set(), ids: new Set() },
+    bing_ads:   { names: new Set(), ids: new Set() },
   };
   for (const r of campaignRows||[]) {
     const bucket = lookup[r.platform];
@@ -138,18 +139,19 @@ function buildCampaignLookup(campaignRows) {
   return lookup;
 }
 
-// Resolve um utm_campaign pra 'Google Ads'/'Meta Ads' usando o lookup acima — por nome exato,
-// campaign_id exato, ou feature keyword compartilhada com alguma campanha real daquela plataforma.
-// Retorna null se não achar nada (aí quem chamou decide o fallback).
+// Resolve um utm_campaign pra 'Google Ads'/'Meta Ads'/'Bing Ads' usando o lookup acima — por nome
+// exato, campaign_id exato, ou feature keyword compartilhada com alguma campanha real daquela
+// plataforma. Retorna null se não achar nada (aí quem chamou decide o fallback).
 function resolveAdPlatformForUtm(utm, lookup) {
   if (!lookup) return null;
   const val = (utm||'').trim().toLowerCase();
   if (!val) return null;
   if (lookup.google_ads.names.has(val) || lookup.google_ads.ids.has(val)) return 'Google Ads';
   if (lookup.meta.names.has(val)       || lookup.meta.ids.has(val))       return 'Meta Ads';
+  if (lookup.bing_ads.names.has(val)   || lookup.bing_ads.ids.has(val))   return 'Bing Ads';
   // Bing usa a mesma convenção de nomes (bing_nonbrand_vendas_search_<feature>) — não tenta casar
-  // por keyword nesse caso, senão "bing_..._jusfinder" seria roubado pro bucket do Google.
-  if (val.startsWith('bing_') || PLATFORM_REFERRAL_PATTERNS.bing.test(val)) return null;
+  // por keyword nos buckets Google/Meta nesse caso, senão "bing_..._jusfinder" seria roubado.
+  if (val.startsWith('bing_') || PLATFORM_REFERRAL_PATTERNS.bing_ads.test(val)) return null;
   for (const kw of FEATURE_KEYWORDS) {
     if (!val.includes(kw)) continue;
     if ([...lookup.google_ads.names].some(n => n.includes(kw))) return 'Google Ads';
@@ -172,7 +174,7 @@ function classifyRealConversionChannel(row, campaignLookup) {
   const referral = row.referral || '';
   if (PLATFORM_REFERRAL_PATTERNS.google_ads.test(referral)) return 'Google Ads';
   if (PLATFORM_REFERRAL_PATTERNS.meta.test(referral))       return 'Meta Ads';
-  if (PLATFORM_REFERRAL_PATTERNS.bing.test(referral))       return 'Bing Ads';
+  if (PLATFORM_REFERRAL_PATTERNS.bing_ads.test(referral))   return 'Bing Ads';
   if (CONTENT_CATEGORIES.includes(row.marketing_category))  return row.marketing_category;
   return 'Outros';
 }
@@ -194,10 +196,13 @@ function aggregateRealConversionsByChannel(rows, campaignLookup) {
 // jusfinder_oabrj e a variante de teste) e o Metabase só consegue diferenciar por essa feature,
 // elas são mescladas em 1 linha só — não dá pra inventar um split que o Metabase não fornece.
 function mergeRealConversions(campaignRows, conversionRows, platformKey) {
-  // Não filtramos por referral aqui: o Metabase às vezes grava o referral errado (Affiliate/Others)
-  // em cadastros que vieram de uma campanha paga de verdade — o nome/feature da campanha é o sinal
-  // mais confiável. FEATURE_KEYWORDS é específico o suficiente por plataforma pra não gerar colisão
-  // (campanhas do Meta não contêm "jusfinder"/"dsa"/"pmax" etc., por exemplo).
+  // Nome exato de campanha vale independente do referral (o Metabase às vezes grava errado —
+  // Affiliate/Others — em cadastros que vieram de campanha paga de verdade). Já o fallback por
+  // keyword PRECISA checar o referral: Bing usa a mesma convenção de nomes que o Google
+  // (bing_..._jusfinder), então um utm genérico "JusFinder" do Google não pode ser atribuído
+  // ao Bing só porque a palavra bate — sem essa checagem, cada mergeRealConversions(plataforma)
+  // "rouba" cadastros genéricos de outras plataformas que a mesma feature.
+  const pattern = PLATFORM_REFERRAL_PATTERNS[platformKey];
   const convs = conversionRows||[];
 
   const nameLower  = c => (c.campaign_name||'').toLowerCase();
@@ -224,11 +229,12 @@ function mergeRealConversions(campaignRows, conversionRows, platformKey) {
 
   // Resolve o groupId de um utm_campaign do Metabase SEMPRE via groupIdOf de uma campanha real,
   // nunca retornando a keyword crua — senão o id não bate com a chave usada em `groups`.
-  const resolveGroupId = (utm) => {
+  const resolveGroupId = (utm, referral) => {
     const lower = (utm||'').trim().toLowerCase();
     if (!lower) return null;
     const exact = campaignRows.find(c => nameLower(c) === lower);
     if (exact) return groupIdOf(exact);
+    if (!pattern.test(referral||'')) return null;
     const candidates = FEATURE_KEYWORDS.filter(k => lower.includes(k) && keywordToCampaigns[k]);
     if (candidates.length > 1) {
       console.warn(`[realConv] utm_campaign "${utm}" ambíguo entre features: ${candidates.join(', ')} — usando "${candidates[0]}"`);
@@ -239,7 +245,7 @@ function mergeRealConversions(campaignRows, conversionRows, platformKey) {
 
   const realByGroup = {}; // groupId -> {clientes}
   convs.forEach(r => {
-    const gid = resolveGroupId(r.utm_campaign);
+    const gid = resolveGroupId(r.utm_campaign, r.referral);
     if (!gid) {
       console.warn(`[realConv][${platformKey}] utm_campaign sem campanha correspondente: "${r.utm_campaign}" (referral="${r.referral}")`);
       return;

@@ -58,6 +58,7 @@ const TABS = [
   {id:'aniversario',  label:'🎂 Aniversário'},
   {id:'google',       label:'🔵 Google Ads'},
   {id:'meta',         label:'🟡 Meta Ads'},
+  {id:'bing',         label:'🟢 Bing Ads'},
   {id:'lp',           label:'🎯 LPs'},
   {id:'sync',         label:'⚙️ Sincronização'},
 ];
@@ -65,7 +66,7 @@ const TABS = [
 let activeTab = 'geral';
 
 async function renderTab(id) {
-  const fns = { geral:tabGeral, diario:tabDiario, aniversario:tabAniversario, google:tabGoogle, meta:tabMeta, ga4:tabGA4, lp:tabLP, sync:tabSync };
+  const fns = { geral:tabGeral, diario:tabDiario, aniversario:tabAniversario, google:tabGoogle, meta:tabMeta, bing:tabBing, ga4:tabGA4, lp:tabLP, sync:tabSync };
   try { await (fns[id] || tabGeral)(); }
   catch(e) {
     document.getElementById('content').innerHTML = `
