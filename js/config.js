@@ -12,7 +12,7 @@ async function supa(path) {
 async function supaRpc(fn, params) {
   const r = await fetch(`${SURL}/rest/v1/rpc/${fn}`, {
     method: 'POST',
-    headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, 'Content-Type': 'application/json', Range: '0-49999' },
     body: JSON.stringify(params)
   });
   if (!r.ok) throw new Error(`Supabase RPC ${fn} ${r.status}: ${await r.text()}`);

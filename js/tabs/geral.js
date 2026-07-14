@@ -1,6 +1,17 @@
+let _geralChart = null;
+
+// Formatação compacta pro eixo do gráfico (1,2k / 3,4M)
+function fAxisCompact(n) {
+  if (n == null || isNaN(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'M';
+  if (abs >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'k';
+  return String(Math.round(n));
+}
+
 async function tabGeral() {
   loading();
-  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals, campsRaw] = await Promise.all([
+  const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals, campsRaw, convDaily] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     fetchCampDailyByPlatform(S.start, S.end),
     fetchGA4ChannelsAgg(S.start, S.end),
@@ -8,6 +19,7 @@ async function tabGeral() {
     S.compare && S.cmpStart ? fetchGA4ChannelsAgg(S.cmpStart, S.cmpEnd) : [],
     fetchJusfyConversionsTotals(S.start, S.end),
     fetchCamps(S.start, S.end),
+    fetchJusfyConversionsDailyAgg(S.start, S.end),
   ]);
 
   // Lookup por nome/campaign_id, pra reclassificar conversões cujo referral no Metabase veio errado
@@ -49,7 +61,7 @@ async function tabGeral() {
   const cbiSpend = cbiAgg.length   ? sum(cbiAgg,'spend')          : undefined;
   const cSess   = cmpGA4Agg.length ? sum(cmpGA4Agg,'sessions')    : undefined;
 
-  // Daily spend chart — by platform
+  // Daily spend chart — by platform + linha de cadastros reais (Chart.js)
   const dailyMap = {};
   for (const r of dailyByPlatform) {
     if (!dailyMap[r.date]) dailyMap[r.date]={g:0,m:0,bi:0};
@@ -57,51 +69,76 @@ async function tabGeral() {
     if (r.platform==='meta')       dailyMap[r.date].m  += +r.spend||0;
     if (r.platform==='bing_ads')   dailyMap[r.date].bi += +r.spend||0;
   }
-  const days  = Object.keys(dailyMap).sort();
-  const maxD  = Math.max(...days.map(d=>dailyMap[d].g+dailyMap[d].m+dailyMap[d].bi),1);
+  const convByDate = {};
+  for (const r of convDaily) convByDate[r.date] = (convByDate[r.date]||0) + (+r.clientes_unicos||0);
+
+  const days = Object.keys(dailyMap).sort();
   const diffDays = (new Date(S.end)-new Date(S.start))/864e5;
 
-  let chartHtml = '';
-  if (days.length===0) {
-    chartHtml = '<div class="c-muted" style="text-align:center;padding:20px;font-size:13px">Sem dados</div>';
-  } else if (diffDays<=45) {
-    chartHtml = days.map(d=>{
-      const g=dailyMap[d].g, m=dailyMap[d].m, bi=dailyMap[d].bi, tot=g+m+bi;
-      return `<div class="chart-day">
-        <span class="chart-label">${d.slice(5)}</span>
-        <div class="chart-bars">
-          ${g>0?`<div style="flex:${g};background:#3b82f6;border-radius:2px 0 0 2px" title="Google: ${fR(g)}"></div>`:''}
-          ${m>0?`<div style="flex:${m};background:#f59e0b" title="Meta: ${fR(m)}"></div>`:''}
-          ${bi>0?`<div style="flex:${bi};background:#10b981;${g===0&&m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(bi)}"></div>`:''}
-          <div style="flex:${maxD-tot};opacity:0"></div>
-        </div>
-        <span class="chart-val">${fR(tot)}</span>
-      </div>`;
-    }).join('');
+  let chartLabels, chartG, chartM, chartBi, chartConv;
+  if (diffDays <= 45) {
+    chartLabels = days.map(d => d.slice(5).split('-').reverse().join('/'));
+    chartG    = days.map(d => dailyMap[d].g);
+    chartM    = days.map(d => dailyMap[d].m);
+    chartBi   = days.map(d => dailyMap[d].bi);
+    chartConv = days.map(d => convByDate[d] || 0);
   } else {
     const mMap = {};
     for (const d of days) {
       const mon = d.slice(0,7);
-      if (!mMap[mon]) mMap[mon]={g:0,m:0,bi:0};
-      mMap[mon].g  += dailyMap[d].g;
-      mMap[mon].m  += dailyMap[d].m;
-      mMap[mon].bi += dailyMap[d].bi;
+      if (!mMap[mon]) mMap[mon] = {g:0,m:0,bi:0,conv:0};
+      mMap[mon].g    += dailyMap[d].g;
+      mMap[mon].m    += dailyMap[d].m;
+      mMap[mon].bi   += dailyMap[d].bi;
+      mMap[mon].conv += (convByDate[d] || 0);
     }
-    const maxM = Math.max(...Object.values(mMap).map(x=>x.g+x.m+x.bi),1);
-    chartHtml = Object.entries(mMap).sort(([a],[b])=>a<b?-1:1).map(([mon,v])=>{
-      const tot=v.g+v.m+v.bi;
-      const label=new Date(mon+'-15').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
-      return `<div class="chart-day">
-        <span class="chart-label">${label}</span>
-        <div class="chart-bars">
-          ${v.g>0?`<div style="flex:${v.g};background:#3b82f6;border-radius:2px 0 0 2px" title="Google: ${fR(v.g)}"></div>`:''}
-          ${v.m>0?`<div style="flex:${v.m};background:#f59e0b" title="Meta: ${fR(v.m)}"></div>`:''}
-          ${v.bi>0?`<div style="flex:${v.bi};background:#10b981;${v.g===0&&v.m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(v.bi)}"></div>`:''}
-          <div style="flex:${maxM-tot};opacity:0"></div>
-        </div>
-        <span class="chart-val">${fR(tot)}</span>
-      </div>`;
-    }).join('');
+    const months = Object.keys(mMap).sort();
+    chartLabels = months.map(mon => new Date(mon+'-15').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+    chartG    = months.map(mon => mMap[mon].g);
+    chartM    = months.map(mon => mMap[mon].m);
+    chartBi   = months.map(mon => mMap[mon].bi);
+    chartConv = months.map(mon => mMap[mon].conv);
+  }
+
+  function renderGeralChart() {
+    const canvas = document.getElementById('geralChart');
+    if (!canvas) return;
+    if (_geralChart) { _geralChart.destroy(); _geralChart = null; }
+    if (days.length === 0) return;
+    _geralChart = new Chart(canvas.getContext('2d'), {
+      data: {
+        labels: chartLabels,
+        datasets: [
+          { type:'bar', label:'Google Ads', data:chartG,  backgroundColor:'#3b82f6', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
+          { type:'bar', label:'Meta Ads',   data:chartM,  backgroundColor:'#f59e0b', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
+          { type:'bar', label:'Bing Ads',   data:chartBi, backgroundColor:'#10b981', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
+          { type:'line', label:'Cadastros Reais', data:chartConv, borderColor:'#01AB7D', backgroundColor:'#ffffff',
+            borderWidth:3, pointBackgroundColor:'#01AB7D', pointBorderWidth:2, pointRadius:3, tension:.3, fill:false, yAxisID:'y1' },
+        ],
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index', intersect:false},
+        scales:{
+          x:{ stacked:true, grid:{display:false}, ticks:{color:'#6b7280', font:{size:10}} },
+          y:{ stacked:true, position:'left', grid:{color:'#f3f4f6'},
+              ticks:{color:'#6b7280', font:{size:10}, callback:v=>'R$ '+fAxisCompact(v)},
+              title:{display:true, text:'Investimento', color:'#6b7280', font:{size:10,weight:'600'}} },
+          y1:{ position:'right', grid:{drawOnChartArea:false},
+               ticks:{color:'#01AB7D', font:{size:10}, callback:v=>fAxisCompact(v)},
+               title:{display:true, text:'Cadastros Reais', color:'#01AB7D', font:{size:10,weight:'600'}} },
+        },
+        plugins:{
+          legend:{display:true, position:'top', align:'end', labels:{color:'#374151', boxWidth:10, usePointStyle:true, font:{size:11}}},
+          tooltip:{
+            backgroundColor:'#111827', titleColor:'#fff', bodyColor:'#fff', padding:10, cornerRadius:8,
+            callbacks:{ label: ctx => ctx.dataset.type==='line'
+              ? `${ctx.dataset.label}: ${fN(ctx.parsed.y)}`
+              : `${ctx.dataset.label}: ${fR(ctx.parsed.y)}` },
+          },
+        },
+      },
+    });
   }
 
   // Sessões por origem (UTM source)
@@ -149,19 +186,14 @@ async function tabGeral() {
     </table></div>
   </div>
 
-  <div class="grid-2" style="margin-bottom:16px">
-    <div class="card">
-      <div class="card-title">
-        Spend Diário por Plataforma
-        <div style="display:flex;gap:10px;font-size:11px;font-weight:400">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Google</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Meta</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Bing</span>
-        </div>
-      </div>
-      <div style="overflow-y:auto;max-height:320px">${chartHtml}</div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Investimento Diário por Plataforma × Cadastros Reais</div>
+    <div style="height:320px;position:relative">
+      ${days.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="geralChart"></canvas>'}
     </div>
-    <div class="card">
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
       <div class="card-title">Distribuição por Plataforma</div>
       ${[
         {label:'Google Ads', badge:'bb', val:gSpend, cls:'c-blue',   pct:totalSpend>0?gSpend/totalSpend:0, bg:'#3b82f6'},
@@ -183,8 +215,9 @@ async function tabGeral() {
           <span class="c-muted">Total de dias</span><strong>${days.length}</strong>
         </div>
       </div>
-    </div>
   </div>
 
   `;
+
+  renderGeralChart();
 }
