@@ -104,21 +104,21 @@ function aggGoogleByName(rows) {
 
 function statusBadge(status) {
   const active = status === 'ACTIVE' || status === 'ENABLED';
-  return `<span style="background:${active?'#1D9E7520':'#30363d'};color:${active?'#1D9E75':'#8b949e'};border:1px solid ${active?'#1D9E7544':'#30363d'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${active?'ATIVO':'PAUSADO'}</span>`;
+  return `<span style="background:${active?'#01AB7D20':'#e5e7eb'};color:${active?'#01AB7D':'#6b7280'};border:1px solid ${active?'#01AB7D44':'#e5e7eb'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${active?'ATIVO':'PAUSADO'}</span>`;
 }
 
 function retentionBars(thruplayRate, p50Rate, p25Rate) {
-  const bar = (color, pct) => `<div style="flex:1;height:5px;background:#21262d;border-radius:3px;overflow:hidden"><div style="height:100%;background:${color};width:${Math.min(pct,100).toFixed(1)}%;border-radius:3px"></div></div>`;
+  const bar = (color, pct) => `<div style="flex:1;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden"><div style="height:100%;background:${color};width:${Math.min(pct,100).toFixed(1)}%;border-radius:3px"></div></div>`;
   const row = (label, color, pct) => `
     <div style="display:flex;align-items:center;gap:6px;font-size:10px">
-      <span style="color:#8b949e;min-width:50px">${label}</span>
+      <span style="color:#6b7280;min-width:50px">${label}</span>
       ${bar(color, pct)}
       <span style="color:${color};min-width:32px;text-align:right">${pct.toFixed(1)}%</span>
     </div>`;
   return `<div style="display:flex;flex-direction:column;gap:4px;min-width:170px">
-    ${row('ThruPlay','#1D9E75', thruplayRate)}
-    ${row('50%','#58a6ff', p50Rate)}
-    ${row('25%','#d29922', p25Rate)}
+    ${row('ThruPlay','#01AB7D', thruplayRate)}
+    ${row('50%','#3b82f6', p50Rate)}
+    ${row('25%','#f59e0b', p25Rate)}
   </div>`;
 }
 
@@ -128,19 +128,19 @@ function ensureCreativeModal() {
   m.id = 'creativeModal';
   m.style.cssText = 'display:none;position:fixed;inset:0;background:#000000cc;z-index:9999;align-items:center;justify-content:center;padding:20px';
   m.innerHTML = `
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:440px;width:100%;position:relative">
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:24px;max-width:440px;width:100%;position:relative">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
         <div>
-          <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Preview do Criativo</div>
-          <div id="modalAdName" style="font-size:14px;font-weight:600;color:#e6edf3;word-break:break-word"></div>
+          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Preview do Criativo</div>
+          <div id="modalAdName" style="font-size:14px;font-weight:600;color:#111827;word-break:break-word"></div>
         </div>
         <button onclick="document.getElementById('creativeModal').style.display='none'"
-          style="background:none;border:1px solid #30363d;color:#8b949e;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:12px">&#x2715;</button>
+          style="background:none;border:1px solid #e5e7eb;color:#6b7280;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:12px">&#x2715;</button>
       </div>
-      <div id="modalContent" style="border-radius:8px;overflow:hidden;background:#0d1117;min-height:180px;display:flex;align-items:center;justify-content:center"></div>
+      <div id="modalContent" style="border-radius:8px;overflow:hidden;background:#f3f4f6;min-height:180px;display:flex;align-items:center;justify-content:center"></div>
       <div style="margin-top:12px">
         <a id="modalLink" href="#" target="_blank" rel="noopener"
-          style="display:block;text-align:center;background:#1D9E75;color:#fff;border-radius:6px;padding:10px;font-size:13px;text-decoration:none">
+          style="display:block;text-align:center;background:#01AB7D;color:#fff;border-radius:6px;padding:10px;font-size:13px;text-decoration:none">
           Abrir no Gerenciador &#x2192;
         </a>
       </div>
@@ -158,13 +158,14 @@ function showCreative(name, thumb, videoId, managerUrl) {
     content.innerHTML = '<iframe width="100%" height="280" src="https://www.youtube.com/embed/' + videoId + '?autoplay=0&mute=1" frameborder="0" allow="fullscreen" allowfullscreen></iframe>';
     link.href = 'https://www.youtube.com/watch?v=' + videoId;
     link.textContent = 'Abrir no YouTube →';
-  } else if (managerUrl && managerUrl.includes('instagram.com/p/')) {
-    // Instagram embed
-    const shortcode = managerUrl.match(/instagram\.com\/p\/([^/?#]+)/)?.[1];
-    if (shortcode) {
-      content.innerHTML = '<iframe src="https://www.instagram.com/p/' + shortcode + '/embed/?autoplay=false" width="100%" height="380" frameborder="0" scrolling="no" allowtransparency="true" style="border-radius:8px;background:#000"></iframe>';
+  } else if (managerUrl && /instagram\.com\/(p|reel)\//.test(managerUrl)) {
+    // Instagram embed (posts e reels)
+    const match = managerUrl.match(/instagram\.com\/(p|reel)\/([^/?#]+)/);
+    if (match) {
+      const [, kind, shortcode] = match;
+      content.innerHTML = '<iframe src="https://www.instagram.com/' + kind + '/' + shortcode + '/embed/?autoplay=false" width="100%" height="380" frameborder="0" scrolling="no" allowtransparency="true" style="border-radius:8px;background:#000"></iframe>';
     } else {
-      content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
+      content.innerHTML = '<div style="color:#6b7280;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
     }
     link.href = managerUrl.split('#')[0];
     link.textContent = 'Abrir no Instagram →';
@@ -172,13 +173,13 @@ function showCreative(name, thumb, videoId, managerUrl) {
     const img = document.createElement('img');
     img.src = thumb;
     img.style.cssText = 'width:100%;display:block;border-radius:4px';
-    img.onerror = () => { content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Thumbnail indisponível</div>'; };
+    img.onerror = () => { content.innerHTML = '<div style="color:#6b7280;font-size:13px;padding:40px;text-align:center">Thumbnail indisponível</div>'; };
     content.innerHTML = '';
     content.appendChild(img);
     link.href = managerUrl || 'https://business.facebook.com';
     link.textContent = 'Abrir no Gerenciador →';
   } else {
-    content.innerHTML = '<div style="color:#8b949e;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
+    content.innerHTML = '<div style="color:#6b7280;font-size:13px;padding:40px;text-align:center">Preview não disponível</div>';
     link.href = managerUrl || '#';
     link.textContent = 'Abrir no Gerenciador →';
   }
@@ -188,9 +189,9 @@ function showCreative(name, thumb, videoId, managerUrl) {
 function previewBtn(name, thumb, videoId, managerUrl) {
   const safe = s => (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '').replace(/\r/g, '');
   return '<button onclick="showCreative(\'' + safe(name) + '\',\'' + safe(thumb) + '\',\'' + safe(videoId) + '\',\'' + safe(managerUrl) + '\')" '
-    + 'style="width:36px;height:36px;border-radius:50%;background:#21262d;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s" '
-    + 'onmouseover="this.style.background=\'#1D9E7533\';this.style.color=\'#1D9E75\';this.style.borderColor=\'#1D9E7566\'" '
-    + 'onmouseout="this.style.background=\'#21262d\';this.style.color=\'#8b949e\';this.style.borderColor=\'#30363d\'">&#x25B6;</button>';
+    + 'style="width:36px;height:36px;border-radius:50%;background:#f3f4f6;border:1px solid #e5e7eb;color:#6b7280;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s" '
+    + 'onmouseover="this.style.background=\'#01AB7D33\';this.style.color=\'#01AB7D\';this.style.borderColor=\'#01AB7D66\'" '
+    + 'onmouseout="this.style.background=\'#f3f4f6\';this.style.color=\'#6b7280\';this.style.borderColor=\'#e5e7eb\'">&#x25B6;</button>';
 }
 
 function metaTable(ads, title, campaignBadge, tableId) {
@@ -218,20 +219,20 @@ function metaTable(ads, title, campaignBadge, tableId) {
       + '<td class="r">' + fN(ad.reach) + '</td>'
       + '<td class="r">' + fN(ad.impressions) + '</td>'
       + '<td class="r">' + ad.freq.toFixed(2) + 'x</td>'
-      + '<td class="r c-green"><strong>' + fN(ad.thruplay) + '</strong><br><span style="font-size:10px;color:#8b949e">' + tpRate.toFixed(1) + '%</span></td>'
+      + '<td class="r c-green"><strong>' + fN(ad.thruplay) + '</strong><br><span style="font-size:10px;color:#6b7280">' + tpRate.toFixed(1) + '%</span></td>'
       + '<td class="r">' + (cpt !== null ? fR(cpt) : '—') + '</td>'
       + '<td>' + retentionBars(tpRate, p50Rate, p25Rate) + '</td>'
-      + '<td class="r">' + fN(ad.video_p25) + '<br><span style="font-size:10px;color:#8b949e">' + p25Rate.toFixed(1) + '%</span></td>'
-      + '<td class="r">' + fN(ad.video_p50) + '<br><span style="font-size:10px;color:#8b949e">' + p50Rate.toFixed(1) + '%</span></td>'
+      + '<td class="r">' + fN(ad.video_p25) + '<br><span style="font-size:10px;color:#6b7280">' + p25Rate.toFixed(1) + '%</span></td>'
+      + '<td class="r">' + fN(ad.video_p50) + '<br><span style="font-size:10px;color:#6b7280">' + p50Rate.toFixed(1) + '%</span></td>'
       + '</tr>';
   }
   return '<div class="card" style="margin-bottom:16px">'
     + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
     + '<div style="display:flex;align-items:center;gap:10px"><span>' + title + '</span>'
     + '<span class="badge by">' + sorted.length + ' ADS</span>'
-    + (campaignBadge ? '<span style="font-size:11px;color:#8b949e;font-weight:400">' + campaignBadge + '</span>' : '')
+    + (campaignBadge ? '<span style="font-size:11px;color:#6b7280;font-weight:400">' + campaignBadge + '</span>' : '')
     + '</div>'
-    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '<span style="font-size:11px;color:#6b7280;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
@@ -275,9 +276,9 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
     + '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
     + '<div style="display:flex;align-items:center;gap:10px"><span>' + title + '</span>'
     + '<span class="badge by">' + sorted.length + ' ADS</span>'
-    + (campaignBadge ? '<span style="font-size:11px;color:#8b949e;font-weight:400">' + campaignBadge + '</span>' : '')
+    + (campaignBadge ? '<span style="font-size:11px;color:#6b7280;font-weight:400">' + campaignBadge + '</span>' : '')
     + '</div>'
-    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '<span style="font-size:11px;color:#6b7280;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
@@ -314,7 +315,7 @@ function googleTable(ads, tableId) {
     + '<div style="display:flex;align-items:center;gap:10px">'
     + '<span>&#x1F535; Google Ads — Demand Gen</span>'
     + '<span class="badge bb">' + sorted.length + ' ADS</span></div>'
-    + '<span style="font-size:11px;color:#8b949e;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '<span style="font-size:11px;color:#6b7280;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
@@ -332,11 +333,11 @@ function renderAniversarioBody() {
   const { metaTopo, metaFundo, googleAni, totSpend, totThru, totViews, totImpMeta } = _aniversarioData;
 
   document.getElementById('content').innerHTML =
-    '<div class="card" style="margin-bottom:20px;border-color:#d2992244;background:#d299220a">'
+    '<div class="card" style="margin-bottom:20px;border-color:#f59e0b44;background:#f59e0b0a">'
     + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     + '<span style="font-size:20px">&#x1F382;</span>'
-    + '<div><div style="font-size:15px;font-weight:700;color:#e6edf3">Campanha de Aniversário</div>'
-    + '<div style="font-size:12px;color:#8b949e">' + disp(S.start) + ' → ' + disp(S.end) + '</div></div>'
+    + '<div><div style="font-size:15px;font-weight:700;color:#111827">Campanha de Aniversário</div>'
+    + '<div style="font-size:12px;color:#6b7280">' + disp(S.start) + ' → ' + disp(S.end) + '</div></div>'
     + '</div>'
     + '<div class="kpi-grid cols-4">'
     + kpiCard('Investimento Total', totSpend,   undefined, fR, 'c-brand')

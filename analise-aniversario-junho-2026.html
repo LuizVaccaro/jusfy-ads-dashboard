@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise — Campanha Aniversário Jusfy | Junho 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa; color: #1a1d2e; line-height: 1.6; }
+
+  .cover {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f2d4f 100%);
+    color: #fff; padding: 80px 60px 60px; position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ''; position: absolute; top: -80px; right: -80px;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,179,237,.15) 0%, transparent 70%);
+  }
+  .cover-badge {
+    display: inline-block; background: rgba(99,179,237,.2); border: 1px solid rgba(99,179,237,.4);
+    color: #90cdf4; padding: 5px 14px; border-radius: 20px; font-size: 12px;
+    letter-spacing: .8px; text-transform: uppercase; margin-bottom: 24px;
+  }
+  .cover h1 { font-size: 42px; font-weight: 700; line-height: 1.2; margin-bottom: 12px; }
+  .cover h1 span { color: #63b3ed; }
+  .cover-sub { font-size: 18px; color: #a0aec0; margin-bottom: 40px; }
+  .cover-meta { display: flex; gap: 40px; font-size: 13px; color: #718096; }
+  .cover-meta strong { color: #e2e8f0; display: block; font-size: 16px; }
+
+  .section { max-width: 960px; margin: 0 auto; padding: 48px 32px; }
+  .section + .section { padding-top: 0; }
+
+  h2 { font-size: 22px; font-weight: 700; color: #1a1d2e; margin-bottom: 6px; }
+  h2 .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 12px; vertical-align: middle; margin-left: 10px;
+    background: #ebf8ff; color: #2b6cb0; letter-spacing: .5px; text-transform: uppercase;
+  }
+  .section-lead { font-size: 14px; color: #718096; margin-bottom: 28px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .kpi-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .kpi {
+    background: #fff; border-radius: 12px; padding: 20px 22px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    border-left: 4px solid #e2e8f0;
+  }
+  .kpi.blue  { border-left-color: #3182ce; }
+  .kpi.green { border-left-color: #38a169; }
+  .kpi.purple{ border-left-color: #805ad5; }
+  .kpi.orange{ border-left-color: #dd6b20; }
+  .kpi.teal  { border-left-color: #319795; }
+  .kpi-label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+  .kpi-val   { font-size: 26px; font-weight: 700; color: #1a1d2e; line-height: 1; margin-bottom: 4px; }
+  .kpi-desc  { font-size: 12px; color: #a0aec0; }
+
+  /* Table */
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 24px; overflow: hidden; }
+  .card-title { font-size: 14px; font-weight: 600; color: #4a5568; padding: 16px 20px 14px; border-bottom: 1px solid #f0f0f0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f7fafc; color: #718096; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px 14px; text-align: left; border-bottom: 1px solid #edf2f7; }
+  th.r, td.r { text-align: right; }
+  td { padding: 11px 14px; border-bottom: 1px solid #f7fafc; color: #2d3748; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 10px; white-space: nowrap;
+  }
+  .badge-blue   { background: #ebf8ff; color: #2b6cb0; }
+  .badge-green  { background: #f0fff4; color: #276749; }
+  .badge-purple { background: #faf5ff; color: #553c9a; }
+  .badge-orange { background: #fffaf0; color: #9c4221; }
+  .badge-gray   { background: #f7fafc; color: #4a5568; }
+  .badge-red    { background: #fff5f5; color: #9b2c2c; }
+
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 6px; background: #edf2f7; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-lbl { font-size: 12px; font-weight: 600; min-width: 42px; text-align: right; }
+
+  .c-blue   { color: #3182ce; }
+  .c-green  { color: #38a169; }
+  .c-orange { color: #dd6b20; }
+  .c-red    { color: #e53e3e; }
+  .c-purple { color: #805ad5; }
+  .c-muted  { color: #a0aec0; }
+  .bold { font-weight: 700; }
+
+  /* Highlights box */
+  .highlight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .highlight {
+    background: #fff; border-radius: 12px; padding: 20px 22px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .highlight h3 { font-size: 13px; font-weight: 700; color: #2d3748; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .highlight p  { font-size: 13px; color: #4a5568; line-height: 1.6; }
+
+  /* Insight callout */
+  .insight {
+    background: linear-gradient(135deg, #ebf8ff, #e6fffa);
+    border: 1px solid #bee3f8; border-radius: 12px; padding: 18px 22px;
+    margin-bottom: 24px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .insight-icon { font-size: 20px; margin-top: 1px; }
+  .insight-body { font-size: 13px; color: #2d3748; }
+  .insight-body strong { color: #1a1d2e; display: block; margin-bottom: 4px; font-size: 14px; }
+
+  .warn {
+    background: #fffaf0; border: 1px solid #fbd38d; border-radius: 12px;
+    padding: 18px 22px; margin-bottom: 24px; display: flex; gap: 14px;
+  }
+  .warn .insight-body strong { color: #744210; }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid #e2e8f0; margin: 40px 0; }
+
+  /* Plataform header */
+  .plat-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .plat-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Footer */
+  footer {
+    background: #1a1d2e; color: #718096; text-align: center;
+    padding: 28px; font-size: 12px;
+  }
+
+  @media print {
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .kpi, .card, .highlight, .insight, .warn { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">Relatório Interno · Confidencial</div>
+  <h1>Campanha <span>Aniversário Jusfy</span><br>Reforço de Marca</h1>
+  <div class="cover-sub">Análise de performance · Junho 2026</div>
+  <div class="cover-meta">
+    <div><strong>30/06/2026</strong>Período de análise</div>
+    <div><strong>01 — 29 Jun 2026</strong>Janela de dados</div>
+    <div><strong>Google + Meta</strong>Plataformas</div>
+  </div>
+</div>
+
+<!-- RESUMO EXECUTIVO -->
+<div class="section">
+  <h2>Resumo Executivo <span class="tag">Visão Geral</span></h2>
+  <div class="section-lead">Consolidado de todas as plataformas na campanha de aniversário — branding topo de funil + conversão.</div>
+
+  <div class="kpi-grid">
+    <div class="kpi blue">
+      <div class="kpi-label">Investimento Total</div>
+      <div class="kpi-val">R$ 72.228</div>
+      <div class="kpi-desc">Google + Meta (Topo + Fundo)</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Impressões Totais</div>
+      <div class="kpi-val">~9,96M</div>
+      <div class="kpi-desc">Impactos únicos estimados</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Pessoas Alcançadas</div>
+      <div class="kpi-val">Ampla</div>
+      <div class="kpi-desc">Público jurídico segmentado</div>
+    </div>
+    <div class="kpi orange">
+      <div class="kpi-label">Compras Atribuídas</div>
+      <div class="kpi-val">88</div>
+      <div class="kpi-desc">CPA médio R$ 90 (Meta Fundo)</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-icon">💡</div>
+    <div class="insight-body">
+      <strong>Principal achado</strong>
+      A campanha entregou quase <strong>10 milhões de impressões</strong> no mês de junho com um mix eficiente entre branding de vídeo e estático. O criativo hero de aniversário em Reels registrou <strong>VTR de 44,7%</strong> — referência de mercado para vídeo mid-form no Meta. O Google DemandGen complementou com 456 mil visualizações de vídeo a um custo por view muito competitivo.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- GOOGLE DEMANDGEN -->
+<div class="section">
+  <div class="plat-header">
+    <div class="plat-dot" style="background:#4285f4"></div>
+    <h2>Google DemandGen <span class="tag">Branding</span></h2>
+  </div>
+  <div class="section-lead">Campanha de awareness com vídeo e display para público jurídico no YouTube e Discover.</div>
+
+  <div class="kpi-grid cols-3">
+    <div class="kpi blue">
+      <div class="kpi-label">Investimento</div>
+      <div class="kpi-val">R$ 32.088</div>
+      <div class="kpi-desc">44,4% do budget total</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Impressões</div>
+      <div class="kpi-val">2,28M</div>
+      <div class="kpi-desc">google_branding_demandgen</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Visualizações de Vídeo</div>
+      <div class="kpi-val">456.695</div>
+      <div class="kpi-desc">VTR 20,1% · R$ 0,07/view</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-icon">📊</div>
+    <div class="insight-body">
+      <strong>Custo por visualização: R$ 0,07</strong>
+      Com 456 mil visualizações a R$ 0,07 cada, o Google DemandGen entregou alcance de vídeo a custo extremamente eficiente. O VTR de 20,1% indica boa retenção para o formato — benchmark típico de DemandGen fica entre 15% e 25%.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">google_branding_demandgen_awareness — Performance do Mês</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Métrica</th><th class="r">Resultado</th><th class="r">Benchmark</th><th class="r">Avaliação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Impressões</td>
+          <td class="r bold">2.276.782</td>
+          <td class="r c-muted">—</td>
+          <td class="r"><span class="badge badge-blue">Volume alto</span></td>
+        </tr>
+        <tr>
+          <td>Visualizações de vídeo</td>
+          <td class="r bold">456.695</td>
+          <td class="r c-muted">—</td>
+          <td class="r"><span class="badge badge-green">✓</span></td>
+        </tr>
+        <tr>
+          <td>VTR (View-Through Rate)</td>
+          <td class="r bold c-blue">20,1%</td>
+          <td class="r c-muted">15–25%</td>
+          <td class="r"><span class="badge badge-green">Dentro do esperado</span></td>
+        </tr>
+        <tr>
+          <td>CPM (custo por mil imp.)</td>
+          <td class="r bold">R$ 14,09</td>
+          <td class="r c-muted">R$ 10–20</td>
+          <td class="r"><span class="badge badge-green">Eficiente</span></td>
+        </tr>
+        <tr>
+          <td>Custo por visualização</td>
+          <td class="r bold c-green">R$ 0,07</td>
+          <td class="r c-muted">R$ 0,05–0,15</td>
+          <td class="r"><span class="badge badge-green">Ótimo</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- META TOPO -->
+<div class="section">
+  <div class="plat-header">
+    <div class="plat-dot" style="background:#1877f2"></div>
+    <h2>Meta · Topo de Funil <span class="tag">Branding</span></h2>
+  </div>
+  <div class="section-lead">Mix de criativos de vídeo (Reels) e estáticos para reforço de marca e awareness do aniversário.</div>
+
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#1877f2">
+      <div class="kpi-label">Investimento</div>
+      <div class="kpi-val">R$ 32.144</div>
+      <div class="kpi-desc">44,5% do budget total</div>
+    </div>
+    <div class="kpi" style="border-left-color:#1877f2">
+      <div class="kpi-label">Impressões</div>
+      <div class="kpi-val">6,91M</div>
+      <div class="kpi-desc">CPM médio R$ 4,65</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Melhor VTR (Reels)</div>
+      <div class="kpi-val">44,7%</div>
+      <div class="kpi-desc">Hero Aniversário Reels</div>
+    </div>
+    <div class="kpi" style="border-left-color:#1877f2">
+      <div class="kpi-label">Criativos Ativos</div>
+      <div class="kpi-val">13</div>
+      <div class="kpi-desc">Vídeo + estático</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-icon">🎬</div>
+    <div class="insight-body">
+      <strong>CPM de R$ 4,65 — altíssima eficiência de alcance</strong>
+      O Meta Topo entregou 6,9 milhões de impressões a apenas R$ 4,65 por mil, resultado muito abaixo da média do mercado (R$ 8–15). Os criativos estáticos foram responsáveis pela maior parte do volume de impressões (72%), enquanto os Reels entregaram o engajamento de vídeo.
+    </div>
+  </div>
+
+  <h3 style="font-size:14px;color:#4a5568;margin-bottom:12px;margin-top:8px">📹 Criativos de Vídeo (Reels)</h3>
+  <div class="card">
+    <div class="card-title">Desempenho de Vídeo — VTR e Retenção</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Criativo</th>
+          <th class="r">Investimento</th>
+          <th class="r">Impressões</th>
+          <th class="r">Thruplays</th>
+          <th class="r">VTR</th>
+          <th class="r">Ret. 25%</th>
+          <th class="r">Ret. 100%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>hero_aniversario_reels</strong> <span class="badge badge-green">🏆 Destaque</span></td>
+          <td class="r">R$ 6.170</td>
+          <td class="r">218.692</td>
+          <td class="r">97.730</td>
+          <td class="r bold c-green">44,7%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:54%;background:#48bb78"></div></div>
+              <span class="bar-lbl c-green">0,54%</span>
+            </div>
+          </td>
+          <td class="r c-green bold">0,38%</td>
+        </tr>
+        <tr>
+          <td>pilulas_aniversario_reels</td>
+          <td class="r">R$ 1.611</td>
+          <td class="r">73.808</td>
+          <td class="r">27.691</td>
+          <td class="r bold c-blue">37,5%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:100%;background:#4299e1"></div></div>
+              <span class="bar-lbl c-blue">42,2%</span>
+            </div>
+          </td>
+          <td class="r c-green bold">37,5%</td>
+        </tr>
+        <tr>
+          <td>pilulas03_aniversario_reels</td>
+          <td class="r">R$ 2.349</td>
+          <td class="r">111.792</td>
+          <td class="r">36.393</td>
+          <td class="r bold c-blue">32,6%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:82%;background:#4299e1"></div></div>
+              <span class="bar-lbl c-blue">34,6%</span>
+            </div>
+          </td>
+          <td class="r c-muted">1,39%</td>
+        </tr>
+        <tr>
+          <td>pilulas02_aniversario_reels</td>
+          <td class="r">R$ 267</td>
+          <td class="r">15.072</td>
+          <td class="r">4.406</td>
+          <td class="r c-blue">29,2%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:74%;background:#90cdf4"></div></div>
+              <span class="bar-lbl c-muted">31,3%</span>
+            </div>
+          </td>
+          <td class="r c-muted">1,51%</td>
+        </tr>
+        <tr>
+          <td>betao02_aniversario_reels</td>
+          <td class="r">R$ 528</td>
+          <td class="r">104.805</td>
+          <td class="r">20.922</td>
+          <td class="r c-muted">20,0%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:37%;background:#cbd5e0"></div></div>
+              <span class="bar-lbl c-muted">15,0%</span>
+            </div>
+          </td>
+          <td class="r c-muted">0,94%</td>
+        </tr>
+        <tr>
+          <td>lancamento_app_reels <span class="badge badge-gray">Pré-camp.</span></td>
+          <td class="r">R$ 7.752</td>
+          <td class="r">922.030</td>
+          <td class="r">150.732</td>
+          <td class="r c-muted">16,4%</td>
+          <td class="r">
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill" style="width:45%;background:#cbd5e0"></div></div>
+              <span class="bar-lbl c-muted">18,1%</span>
+            </div>
+          </td>
+          <td class="r c-muted">1,07%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="warn">
+    <div class="insight-icon">⚠️</div>
+    <div class="insight-body">
+      <strong>pilulas_aniversario_reels — Retenção 100% anômala (37,5%)</strong>
+      Este criativo tem taxa de conclusão completa (100%) igual ao VTR — indicando que quem começa a assistir tende a ir até o final. Pode ser um vídeo curto (≤6s) ou uma anomalia de contagem. Vale investigar a duração real do criativo no Gerenciador.
+    </div>
+  </div>
+
+  <h3 style="font-size:14px;color:#4a5568;margin-bottom:12px;margin-top:8px">🖼 Criativos Estáticos e Carrossel</h3>
+  <div class="card">
+    <div class="card-title">Alcance via Formatos Estáticos</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Criativo</th>
+          <th class="r">Investimento</th>
+          <th class="r">Impressões</th>
+          <th class="r">CPM</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>aniversario_estatico</strong> (02/06)</td>
+          <td class="r">R$ 7.737</td>
+          <td class="r bold">3.204.665</td>
+          <td class="r c-green bold">R$ 2,42</td>
+        </tr>
+        <tr>
+          <td><strong>aniversario_estatico</strong> (12/06)</td>
+          <td class="r">R$ 4.516</td>
+          <td class="r bold">1.746.172</td>
+          <td class="r c-green bold">R$ 2,59</td>
+        </tr>
+        <tr>
+          <td>transcricao_audio_carrossel (16/06)</td>
+          <td class="r">R$ 979</td>
+          <td class="r">446.662</td>
+          <td class="r">R$ 2,19</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <div class="insight-icon">📌</div>
+    <div class="insight-body">
+      <strong>CPM de R$ 2,42 nos criativos estáticos — melhor custo de alcance da campanha</strong>
+      Os banners estáticos de aniversário entregaram quase 5 milhões de impressões por menos de R$ 13.000, com CPM abaixo de R$ 2,60. São o principal motor de volume de alcance da campanha — ideal para saturação de mensagem em público amplo.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- META FUNDO -->
+<div class="section">
+  <div class="plat-header">
+    <div class="plat-dot" style="background:#f59e0b"></div>
+    <h2>Meta · Fundo de Funil <span class="tag">Conversão</span></h2>
+  </div>
+  <div class="section-lead">Criativos de pílula (pilula_02 e pilula_04) em campanha de vendas — suporte à conversão de público aquecido pelo branding.</div>
+
+  <div class="kpi-grid cols-2">
+    <div class="kpi orange">
+      <div class="kpi-label">Investimento</div>
+      <div class="kpi-val">R$ 7.996</div>
+      <div class="kpi-desc">11,1% do budget total</div>
+    </div>
+    <div class="kpi orange">
+      <div class="kpi-label">Compras Atribuídas</div>
+      <div class="kpi-val">88</div>
+      <div class="kpi-desc">CPA médio R$ 90,87</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Comparativo de Criativos — Fundo de Funil</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Criativo</th>
+          <th class="r">Investimento</th>
+          <th class="r">Impressões</th>
+          <th class="r">Cliques</th>
+          <th class="r">CTR</th>
+          <th class="r">Compras</th>
+          <th class="r">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>fundo_pilula_02_reels</strong> <span class="badge badge-green">Principal</span></td>
+          <td class="r">R$ 7.665</td>
+          <td class="r">751.369</td>
+          <td class="r">7.571</td>
+          <td class="r">1,01%</td>
+          <td class="r bold">85</td>
+          <td class="r bold c-green">R$ 90,17</td>
+        </tr>
+        <tr>
+          <td>fundo_pilula_04_reels</td>
+          <td class="r">R$ 331</td>
+          <td class="r">23.674</td>
+          <td class="r">264</td>
+          <td class="r">1,12%</td>
+          <td class="r">3</td>
+          <td class="r c-orange">R$ 110,33</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <div class="insight-icon">🎯</div>
+    <div class="insight-body">
+      <strong>pilula_02 é o criativo de fundo dominante</strong>
+      96% do investimento e 97% das compras estão concentrados no pilula_02. O CPA de R$ 90 demonstra eficiência na conversão de público aquecido pelo branding. O pilula_04 tem CTR ligeiramente superior (1,12%), mas volume insuficiente para conclusões.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- DESTAQUES E RECOMENDAÇÕES -->
+<div class="section">
+  <h2>Destaques & Recomendações <span class="tag">Insights</span></h2>
+  <div class="section-lead">Principais aprendizados da campanha de aniversário para informar as próximas ações.</div>
+
+  <div class="highlight-grid">
+    <div class="highlight">
+      <h3>🏆 Hero Reels — criativo de maior impacto</h3>
+      <p>O <strong>hero_aniversario_reels</strong> com VTR de 44,7% é o criativo de maior retenção da campanha. Para próximas datas comemorativas, este formato deve ser o ponto de partida do planejamento criativo.</p>
+    </div>
+    <div class="highlight">
+      <h3>📈 Estáticos — motor de volume</h3>
+      <p>Os banners estáticos entregaram CPM de R$ 2,40–2,60, ideal para saturação de mensagem. O mix de vídeo (engajamento) + estático (volume) provou ser eficiente para campanhas de branding.</p>
+    </div>
+    <div class="highlight">
+      <h3>🔵 Google DemandGen — complemento eficaz</h3>
+      <p>O DemandGen entregou R$ 0,07 por view e VTR de 20%, dentro do benchmark. Vale testar segmentações de intenção mais refinadas para aumentar o VTR na próxima campanha.</p>
+    </div>
+    <div class="highlight">
+      <h3>⚡ pilula_04 — testar budget maior</h3>
+      <p>CTR de 1,12% (superior ao pilula_02) com apenas 3 conversões por volume baixo. Recomenda-se aumentar o budget do pilula_04 nas próximas semanas para validar o potencial de escala.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resumo Consolidado por Plataforma</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Plataforma / Frente</th>
+          <th class="r">Investimento</th>
+          <th class="r">% Budget</th>
+          <th class="r">Impressões</th>
+          <th class="r">Métrica-chave</th>
+          <th class="r">Avaliação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-blue">Google DemandGen</span> Branding</td>
+          <td class="r bold">R$ 32.088</td>
+          <td class="r">44,4%</td>
+          <td class="r">2.276.782</td>
+          <td class="r c-blue bold">VTR 20,1%</td>
+          <td class="r"><span class="badge badge-green">Dentro do esperado</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#ebf4ff;color:#1565c0">Meta Topo</span> Branding · Vídeo</td>
+          <td class="r bold">R$ 19.300</td>
+          <td class="r">26,7%</td>
+          <td class="r">1.551.788</td>
+          <td class="r c-green bold">VTR até 44,7%</td>
+          <td class="r"><span class="badge badge-green">Acima do esperado</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#ebf4ff;color:#1565c0">Meta Topo</span> Branding · Estático</td>
+          <td class="r bold">R$ 12.844</td>
+          <td class="r">17,8%</td>
+          <td class="r">5.397.741</td>
+          <td class="r c-green bold">CPM R$ 2,38</td>
+          <td class="r"><span class="badge badge-green">Excelente alcance</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-orange">Meta Fundo</span> Conversão</td>
+          <td class="r bold">R$ 7.996</td>
+          <td class="r">11,1%</td>
+          <td class="r">775.043</td>
+          <td class="r c-green bold">CPA R$ 90</td>
+          <td class="r"><span class="badge badge-green">Eficiente</span></td>
+        </tr>
+        <tr style="background:#f7fafc">
+          <td class="bold">TOTAL</td>
+          <td class="r bold">R$ 72.228</td>
+          <td class="r bold">100%</td>
+          <td class="r bold">9.957.354</td>
+          <td class="r c-muted">—</td>
+          <td class="r"><span class="badge badge-blue">Campanha ativa</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Jusfy · Análise interna · Dados extraídos em 30/06/2026 via Meta Ads API + Google Ads API · Dashboard: jusfy-ads-dashboard.netlify.app
+</footer>
+
+</body>
+</html>

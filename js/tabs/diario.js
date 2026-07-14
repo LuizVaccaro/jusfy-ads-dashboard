@@ -94,9 +94,9 @@ function renderDiarioBody(filterChannel, filterCategory) {
   document.getElementById('content').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Canal</label>
+      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Filtrar Canal</label>
       <select id="diarioChannelFilter" onchange="renderDiarioBody(this.value||null, undefined)"
-        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:180px">
+        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:180px">
         <option value="" ${!_diarioChannelFilter?'selected':''}>Todos os Canais</option>
         <option value="Orgânico"  ${_diarioChannelFilter==='Orgânico'?'selected':''}>Orgânico</option>
         <option value="Google Ads" ${_diarioChannelFilter==='Google Ads'?'selected':''}>Google Ads</option>
@@ -105,9 +105,9 @@ function renderDiarioBody(filterChannel, filterCategory) {
       </select>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Categoria</label>
+      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Categoria</label>
       <select id="diarioCategoryFilter" onchange="renderDiarioBody(undefined, this.value||null)"
-        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
         <option value="" ${!_diarioCategoryFilter?'selected':''}>Todas as Categorias</option>
         <option value="Non brand" ${_diarioCategoryFilter==='Non brand'?'selected':''}>Non brand</option>
         <option value="Brand Search" ${_diarioCategoryFilter==='Brand Search'?'selected':''}>Brand Search</option>
@@ -126,7 +126,7 @@ function renderDiarioBody(filterChannel, filterCategory) {
   <div class="card">
     <div class="card-title" style="margin-bottom:14px">
       Performance Diária — ${disp(S.start)} → ${disp(S.end)}
-      <span style="font-size:11px;font-weight:400;color:#8b949e">${rows.length} dias</span>
+      <span style="font-size:11px;font-weight:400;color:#6b7280">${rows.length} dias</span>
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
@@ -158,7 +158,7 @@ function renderDiarioBody(filterChannel, filterCategory) {
         }).join('') : emptyRow(hasCmp ? 8 : 6)}
       </tbody>
       <tfoot>
-        <tr style="border-top:2px solid #30363d;background:#161b22">
+        <tr style="border-top:2px solid #e5e7eb;background:#ffffff">
           <td><strong>Total</strong></td>
           <td class="r"><strong>${fN(totSess)}</strong></td>
           <td class="r"><strong>${fN(Math.round(totConv))}</strong></td>

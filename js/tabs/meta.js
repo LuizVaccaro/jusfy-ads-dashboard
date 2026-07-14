@@ -5,8 +5,8 @@ let _metaCreativos = { topo: null, fundo: null };
 function metaSubtabBtn(id, label) {
   const active = _metaSubTab === id;
   return `<button onclick="switchMetaSubTab('${id}')"
-    style="background:${active ? '#d2992222' : '#161b22'};border:1px solid ${active ? '#d29922' : '#30363d'};
-      color:${active ? '#d29922' : '#8b949e'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+    style="background:${active ? '#f59e0b22' : '#ffffff'};border:1px solid ${active ? '#f59e0b' : '#e5e7eb'};
+      color:${active ? '#f59e0b' : '#6b7280'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
       cursor:pointer;transition:all .15s">${label}</button>`;
 }
 
@@ -63,9 +63,9 @@ function renderMetaCampanhas() {
 
   document.getElementById('m-subtab-body').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
-    <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
+    <label style="font-size:12px;color:#6b7280;white-space:nowrap">Filtrar Campanha</label>
     <select id="metaCampFilter" onchange="renderMetaTable(this.value||null)"
-      style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+      style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
       <option value="">Todas as Campanhas</option>
       ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
     </select>

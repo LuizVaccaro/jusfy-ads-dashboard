@@ -59,6 +59,7 @@ const TABS = [
   {id:'google',       label:'🔵 Google Ads'},
   {id:'meta',         label:'🟡 Meta Ads'},
   {id:'bing',         label:'🟢 Bing Ads'},
+  {id:'instagram',    label:'📸 Instagram Orgânico'},
   {id:'lp',           label:'🎯 LPs'},
   {id:'sync',         label:'⚙️ Sincronização'},
 ];
@@ -66,14 +67,14 @@ const TABS = [
 let activeTab = 'geral';
 
 async function renderTab(id) {
-  const fns = { geral:tabGeral, diario:tabDiario, aniversario:tabAniversario, google:tabGoogle, meta:tabMeta, bing:tabBing, ga4:tabGA4, lp:tabLP, sync:tabSync };
+  const fns = { geral:tabGeral, diario:tabDiario, aniversario:tabAniversario, google:tabGoogle, meta:tabMeta, bing:tabBing, instagram:tabInstagram, ga4:tabGA4, lp:tabLP, sync:tabSync };
   try { await (fns[id] || tabGeral)(); }
   catch(e) {
     document.getElementById('content').innerHTML = `
       <div class="card" style="text-align:center;padding:40px">
         <div style="font-size:32px;margin-bottom:12px">⚠️</div>
         <div style="font-size:15px;font-weight:600;margin-bottom:8px">Erro ao carregar dados</div>
-        <div style="font-size:13px;color:#8b949e">${e.message}</div>
+        <div style="font-size:13px;color:#6b7280">${e.message}</div>
       </div>`;
   }
 }
@@ -86,14 +87,14 @@ async function checkMetaToken() {
     });
     const d = await r.json();
     if (d.error || !d.valid) {
-      showTokenAlert('❌ Token Meta Ads inválido ou expirado! Renove agora para não perder dados.', '#f85149', '#f8514944', '#f8514918');
+      showTokenAlert('❌ Token Meta Ads inválido ou expirado! Renove agora para não perder dados.', '#ef4444', '#ef444444', '#ef444418');
       return;
     }
     if (d.never_expires) return;
     if (d.days_left <= 14) {
-      const cor = d.days_left <= 5 ? '#f85149' : '#d29922';
-      const bdr = d.days_left <= 5 ? '#f8514944' : '#d2992244';
-      const bg  = d.days_left <= 5 ? '#f8514918' : '#d2992218';
+      const cor = d.days_left <= 5 ? '#ef4444' : '#f59e0b';
+      const bdr = d.days_left <= 5 ? '#ef444444' : '#f59e0b44';
+      const bg  = d.days_left <= 5 ? '#ef444418' : '#f59e0b18';
       showTokenAlert(`⚠️ Token Meta Ads expira em <strong>${d.days_left} dias</strong>. Renove antes de ${new Date(d.expires_at*1000).toLocaleDateString('pt-BR')}.`, cor, bdr, bg);
     }
   } catch(_) {}

@@ -70,9 +70,9 @@ async function tabGeral() {
       return `<div class="chart-day">
         <span class="chart-label">${d.slice(5)}</span>
         <div class="chart-bars">
-          ${g>0?`<div style="flex:${g};background:#58a6ff;border-radius:2px 0 0 2px" title="Google: ${fR(g)}"></div>`:''}
-          ${m>0?`<div style="flex:${m};background:#d29922" title="Meta: ${fR(m)}"></div>`:''}
-          ${bi>0?`<div style="flex:${bi};background:#3fb950;${g===0&&m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(bi)}"></div>`:''}
+          ${g>0?`<div style="flex:${g};background:#3b82f6;border-radius:2px 0 0 2px" title="Google: ${fR(g)}"></div>`:''}
+          ${m>0?`<div style="flex:${m};background:#f59e0b" title="Meta: ${fR(m)}"></div>`:''}
+          ${bi>0?`<div style="flex:${bi};background:#10b981;${g===0&&m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(bi)}"></div>`:''}
           <div style="flex:${maxD-tot};opacity:0"></div>
         </div>
         <span class="chart-val">${fR(tot)}</span>
@@ -94,9 +94,9 @@ async function tabGeral() {
       return `<div class="chart-day">
         <span class="chart-label">${label}</span>
         <div class="chart-bars">
-          ${v.g>0?`<div style="flex:${v.g};background:#58a6ff;border-radius:2px 0 0 2px" title="Google: ${fR(v.g)}"></div>`:''}
-          ${v.m>0?`<div style="flex:${v.m};background:#d29922" title="Meta: ${fR(v.m)}"></div>`:''}
-          ${v.bi>0?`<div style="flex:${v.bi};background:#3fb950;${v.g===0&&v.m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(v.bi)}"></div>`:''}
+          ${v.g>0?`<div style="flex:${v.g};background:#3b82f6;border-radius:2px 0 0 2px" title="Google: ${fR(v.g)}"></div>`:''}
+          ${v.m>0?`<div style="flex:${v.m};background:#f59e0b" title="Meta: ${fR(v.m)}"></div>`:''}
+          ${v.bi>0?`<div style="flex:${v.bi};background:#10b981;${v.g===0&&v.m===0?'border-radius:2px':'border-radius:0 2px 2px 0'}" title="Bing: ${fR(v.bi)}"></div>`:''}
           <div style="flex:${maxM-tot};opacity:0"></div>
         </div>
         <span class="chart-val">${fR(tot)}</span>
@@ -140,7 +140,7 @@ async function tabGeral() {
             <td class="r c-muted">${fP(pct)}</td>
           </tr>`;
         }).join('')}
-        <tr style="border-top:1px solid #30363d">
+        <tr style="border-top:1px solid #e5e7eb">
           <td><strong>Total</strong></td>
           <td class="r c-blue"><strong>${fN(realTotal)}</strong></td>
           <td class="r c-muted">100%</td>
@@ -154,9 +154,9 @@ async function tabGeral() {
       <div class="card-title">
         Spend Diário por Plataforma
         <div style="display:flex;gap:10px;font-size:11px;font-weight:400">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#58a6ff;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Google</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#d29922;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Meta</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#3fb950;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Bing</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Google</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Meta</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Bing</span>
         </div>
       </div>
       <div style="overflow-y:auto;max-height:320px">${chartHtml}</div>
@@ -164,21 +164,21 @@ async function tabGeral() {
     <div class="card">
       <div class="card-title">Distribuição por Plataforma</div>
       ${[
-        {label:'Google Ads', badge:'bb', val:gSpend, cls:'c-blue',   pct:totalSpend>0?gSpend/totalSpend:0, bg:'#58a6ff'},
-        {label:'Meta Ads',   badge:'by', val:mSpend, cls:'c-yellow', pct:totalSpend>0?mSpend/totalSpend:0, bg:'#d29922'},
-        {label:'Bing Ads',   badge:'bg', val:biSpend, cls:'c-green', pct:totalSpend>0?biSpend/totalSpend:0, bg:'#3fb950'},
+        {label:'Google Ads', badge:'bb', val:gSpend, cls:'c-blue',   pct:totalSpend>0?gSpend/totalSpend:0, bg:'#3b82f6'},
+        {label:'Meta Ads',   badge:'by', val:mSpend, cls:'c-yellow', pct:totalSpend>0?mSpend/totalSpend:0, bg:'#f59e0b'},
+        {label:'Bing Ads',   badge:'bg', val:biSpend, cls:'c-green', pct:totalSpend>0?biSpend/totalSpend:0, bg:'#10b981'},
       ].map(x=>`
         <div style="margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <span class="badge ${x.badge}">${x.label}</span>
             <strong class="${x.cls}">${fR(x.val)}</strong>
           </div>
-          <div style="height:8px;background:#21262d;border-radius:4px;overflow:hidden;margin-bottom:3px">
+          <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;margin-bottom:3px">
             <div style="height:100%;background:${x.bg};border-radius:4px;width:${(x.pct*100).toFixed(1)}%;transition:width .4s"></div>
           </div>
-          <div style="font-size:11px;color:#8b949e;text-align:right">${(x.pct*100).toFixed(1)}% do total</div>
+          <div style="font-size:11px;color:#6b7280;text-align:right">${(x.pct*100).toFixed(1)}% do total</div>
         </div>`).join('')}
-      <div style="border-top:1px solid #30363d;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+      <div style="border-top:1px solid #e5e7eb;padding-top:12px;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;justify-content:space-between;font-size:13px">
           <span class="c-muted">Total de dias</span><strong>${days.length}</strong>
         </div>

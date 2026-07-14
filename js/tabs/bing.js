@@ -97,17 +97,17 @@ async function tabBing() {
   document.getElementById('content').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Filtrar Campanha</label>
+      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Filtrar Campanha</label>
       <select id="bingCampFilter" onchange="renderBingTable(this.value||null, undefined)"
-        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
         <option value="">Todas as Campanhas</option>
         ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
       </select>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#8b949e;white-space:nowrap">Categoria</label>
+      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Categoria</label>
       <select id="bingCategoryFilter" onchange="renderBingTable(undefined, this.value||null)"
-        style="background:#161b22;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
         <option value="">Todas as Categorias</option>
         <option value="Non brand">Non brand</option>
         <option value="Brand Search">Brand Search</option>

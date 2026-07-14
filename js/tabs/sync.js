@@ -38,9 +38,9 @@ async function tabSync() {
 
   <div class="card">
     <div class="card-title">Sincronização Manual / Backfill Histórico</div>
-    <p style="font-size:13px;color:#8b949e;margin-bottom:14px">
+    <p style="font-size:13px;color:#6b7280;margin-bottom:14px">
       Sincronize um dia específico ou um intervalo de datas para carregar histórico.
-      Para backfill completo (jan/2025 → hoje), use Start: <code style="color:#1D9E75">2025-01-01</code> e End: data de ontem.
+      Para backfill completo (jan/2025 → hoje), use Start: <code style="color:#01AB7D">2025-01-01</code> e End: data de ontem.
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
       <div class="filter-group">
@@ -56,16 +56,16 @@ async function tabSync() {
       <button class="sync-btn sync-g"   onclick="triggerSync('google-ads')">🔵 Sync Google Ads</button>
       <button class="sync-btn sync-m"   onclick="triggerSync('meta-ads')">🟡 Sync Meta Ads</button>
       <button class="sync-btn sync-ga4" onclick="triggerSync('ga4')">📈 Sync GA4</button>
-      <button class="sync-btn" style="border-color:#1D9E7544;background:#1D9E7511;color:#1D9E75" onclick="triggerAll()">⚡ Sync Todos</button>
+      <button class="sync-btn" style="border-color:#01AB7D44;background:#01AB7D11;color:#01AB7D" onclick="triggerAll()">⚡ Sync Todos</button>
     </div>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #30363d">
-      <div style="font-size:12px;font-weight:600;color:#e6edf3;margin-bottom:8px">🎂 Criativos — Aniversário</div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
+      <div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:8px">🎂 Criativos — Aniversário</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="sync-btn sync-m" onclick="triggerSync('meta-creatives')">🟡 Sync Meta Criativos</button>
         <button class="sync-btn sync-g" onclick="triggerSync('google-creatives')">🔵 Sync Google Criativos</button>
       </div>
     </div>
-    <div id="syncLog" style="margin-top:14px;font-size:12px;color:#8b949e;font-family:monospace;max-height:200px;overflow-y:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;display:none"></div>
+    <div id="syncLog" style="margin-top:14px;font-size:12px;color:#6b7280;font-family:monospace;max-height:200px;overflow-y:auto;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:10px;display:none"></div>
   </div>`;
 
   renderSyncLogsTable();
