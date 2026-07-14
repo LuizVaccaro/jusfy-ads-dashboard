@@ -46,7 +46,7 @@ async function tabGA4() {
           return `<div class="chart-day">
             <span class="chart-label">${d.slice(5)}</span>
             <div class="chart-bars">
-              <div style="flex:${s};background:#3b82f6;border-radius:2px" title="${fN(s)} sessões"></div>
+              <div style="flex:${s};background:#0182ab;border-radius:2px" title="${fN(s)} sessões"></div>
               <div style="flex:${maxS-s};opacity:0"></div>
             </div>
             <span class="chart-val">${fN(s)}</span>
@@ -62,8 +62,8 @@ async function tabGA4() {
             <span class="badge bb">${src}</span>
             <span><strong>${fN(v)}</strong> <span class="c-muted">sessões</span></span>
           </div>
-          <div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden">
-            <div style="height:100%;background:#01AB7D;width:${(v/maxSrc*100).toFixed(1)}%"></div>
+          <div style="height:6px;background:#FAFAFA;border-radius:3px;overflow:hidden">
+            <div style="height:100%;background:#02A378;width:${(v/maxSrc*100).toFixed(1)}%"></div>
           </div>
         </div>`).join('') || '<div class="c-muted" style="font-size:13px;padding:20px 0;text-align:center">Sem dados</div>'}
     </div>

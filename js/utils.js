@@ -100,6 +100,108 @@ async function fetchInstagramAccountDailyAgg(s, e) { return supaRpc('get_instagr
 
 // ── Match de conversões reais (Metabase) — ver js/conversions-match.js ──
 
+// ── Gráfico combinado (barras empilhadas + linha), usado em Geral/Google/Meta/Bing ──
+function fAxisCompact(n) {
+  if (n == null || isNaN(n)) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'M';
+  if (abs >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'k';
+  return String(Math.round(n));
+}
+
+const _comboCharts = {};
+
+// barDatasets: [{label, data, backgroundColor}] — sempre em R$, eixo y (esquerda).
+// lineDatasets: [{label, data, borderColor, yAxisID}] — yAxisID 'y' (R$, ex: CAC) ou 'y1' (contagem, ex: Cadastros Reais).
+function renderComboChart(canvasId, labels, barDatasets, lineDatasets) {
+  const canvas = document.getElementById(canvasId);
+  if (_comboCharts[canvasId]) { _comboCharts[canvasId].destroy(); delete _comboCharts[canvasId]; }
+  if (!canvas || !labels.length) return;
+
+  const y1Line  = lineDatasets.find(d => (d.yAxisID||'y1') === 'y1') || lineDatasets[0];
+  const y1Color = (y1Line && y1Line.borderColor) || '#02A378';
+  const y1Label = (y1Line && y1Line.label) || 'Cadastros';
+
+  // Chart.js desenha em ordem crescente de "order" — quem desenha por último fica na frente.
+  // As barras precisam de order menor (fundo) e as linhas de order maior (frente).
+  const datasets = [
+    ...barDatasets.map(d => ({ type:'bar', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y', order:1, ...d })),
+    ...lineDatasets.map(d => ({ type:'line', borderWidth:3, pointBorderWidth:2, pointRadius:3,
+      tension:.3, fill:false, backgroundColor:'#ffffff', yAxisID:'y1', order:2, pointBackgroundColor:d.borderColor, ...d })),
+  ];
+
+  _comboCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{color:'#212121BF', font:{size:10}} },
+        y:{ stacked:true, position:'left', grid:{color:'#FAFAFA'},
+            ticks:{color:'#212121BF', font:{size:10}, callback:v=>'R$ '+fAxisCompact(v)},
+            title:{display:true, text:'Investimento / CAC (R$)', color:'#212121BF', font:{size:10,weight:'600'}} },
+        y1:{ position:'right', grid:{drawOnChartArea:false},
+             ticks:{color:y1Color, font:{size:10}, callback:v=>fAxisCompact(v)},
+             title:{display:true, text:y1Label, color:y1Color, font:{size:10,weight:'600'}} },
+      },
+      plugins:{
+        legend:{display:true, position:'top', align:'end', labels:{color:'#212121', boxWidth:10, usePointStyle:true, font:{size:11}}},
+        tooltip:{
+          backgroundColor:'#212121', titleColor:'#fff', bodyColor:'#fff', padding:10, cornerRadius:8,
+          callbacks:{ label: ctx => (ctx.dataset.type==='bar' || ctx.dataset.yAxisID==='y')
+            ? `${ctx.dataset.label}: ${fR(ctx.parsed.y)}` : `${ctx.dataset.label}: ${fN(ctx.parsed.y)}` },
+        },
+      },
+    },
+  });
+}
+
+// Agrupa saída de get_jusfy_conversions_daily_agg em {data: {canal: clientes_unicos}}, usando a mesma
+// classificação por campanha/referral do resto do app (ver classifyRealConversionChannel).
+function aggregateDailyRealConversionsByChannel(rows, campaignLookup) {
+  const byDate = {};
+  for (const r of rows||[]) {
+    const ch = classifyRealConversionChannel(r, campaignLookup);
+    if (!byDate[r.date]) byDate[r.date] = {};
+    byDate[r.date][ch] = (byDate[r.date][ch]||0) + (+r.clientes_unicos||0);
+  }
+  return byDate;
+}
+
+// Constrói labels (dia ou mês, dependendo do range) e arrays alinhados de gasto+conversões,
+// pra alimentar renderComboChart. platformSpendMap: {date: valor}. channelConvMap: {date:{canal:qtd}}.
+function buildComboChartSeries(start, end, platformSpendMap, channelConvMap, channelLabel) {
+  const days = Object.keys(platformSpendMap).sort();
+  const diffDays = (new Date(end) - new Date(start)) / 864e5;
+
+  const cacOf = (spend, conv) => conv > 0 ? spend / conv : null;
+
+  if (diffDays <= 45) {
+    const spend = days.map(d => platformSpendMap[d] || 0);
+    const conv  = days.map(d => (channelConvMap[d] && channelConvMap[d][channelLabel]) || 0);
+    return {
+      labels: days.map(d => d.slice(5).split('-').reverse().join('/')),
+      spend, conv,
+      cac: spend.map((s,i) => cacOf(s, conv[i])),
+    };
+  }
+  const mMap = {};
+  for (const d of days) {
+    const mon = d.slice(0,7);
+    if (!mMap[mon]) mMap[mon] = { spend:0, conv:0 };
+    mMap[mon].spend += (platformSpendMap[d] || 0);
+    mMap[mon].conv  += (channelConvMap[d] && channelConvMap[d][channelLabel]) || 0;
+  }
+  const months = Object.keys(mMap).sort();
+  const spend = months.map(mon => mMap[mon].spend);
+  const conv  = months.map(mon => mMap[mon].conv);
+  return {
+    labels: months.map(mon => new Date(mon+'-15').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})),
+    spend, conv,
+    cac: spend.map((s,i) => cacOf(s, conv[i])),
+  };
+}
+
 // Raw — mantidos para compatibilidade (criativos ainda precisam de linha por linha)
 async function fetchCamps(s, e) {
   return supa(`campaign_daily?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);

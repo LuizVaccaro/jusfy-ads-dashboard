@@ -56,13 +56,16 @@ function renderGoogleTable(filterCamp, filterCategory) {
 
 async function tabGoogle() {
   loading();
-  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows] = await Promise.all([
+  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
     fetchGA4SessionsByCampaign(S.start, S.end),
     S.compare && S.cmpStart ? fetchGA4SessionsByCampaign(S.cmpStart, S.cmpEnd) : [],
     fetchJusfyConversionsByCampaign(S.start, S.end),
     S.compare && S.cmpStart ? fetchJusfyConversionsByCampaign(S.cmpStart, S.cmpEnd) : [],
+    fetchCampDailyByPlatform(S.start, S.end),
+    fetchJusfyConversionsDailyAgg(S.start, S.end),
+    fetchCamps(S.start, S.end),
   ]);
 
   const sessMap    = Object.fromEntries(ga4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
@@ -94,20 +97,27 @@ async function tabGoogle() {
 
   const camps = agg.map(r => r.campaign_name);
 
+  // Gráfico diário: gasto Google Ads x cadastros reais atribuídos ao Google
+  const spendByDate = {};
+  for (const r of dailyByPlatform) if (r.platform === 'google_ads') spendByDate[r.date] = (spendByDate[r.date]||0) + (+r.spend||0);
+  const campaignLookup = buildCampaignLookup(campsRaw);
+  const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
+  const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Google Ads');
+
   document.getElementById('content').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Filtrar Campanha</label>
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
       <select id="googleCampFilter" onchange="renderGoogleTable(this.value||null, undefined)"
-        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
         <option value="">Todas as Campanhas</option>
         ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
       </select>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#6b7280;white-space:nowrap">Categoria</label>
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
       <select id="googleCategoryFilter" onchange="renderGoogleTable(undefined, this.value||null)"
-        style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
         <option value="">Todas as Categorias</option>
         <option value="Non brand">Non brand</option>
         <option value="Brand Search">Brand Search</option>
@@ -115,6 +125,12 @@ async function tabGoogle() {
     </div>
   </div>
   <div class="kpi-grid cols-4" id="g-kpis" style="margin-bottom:20px"></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Investimento Diário × Cadastros Reais</div>
+    <div style="height:300px;position:relative">
+      ${chart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="googleChart"></canvas>'}
+    </div>
+  </div>
   <div class="card">
     <div class="card-title">Google Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
     <div class="table-wrap"><table>
@@ -124,6 +140,10 @@ async function tabGoogle() {
   </div>`;
 
   renderGoogleTable(null);
+  renderComboChart('googleChart', chart.labels, [{ label:'Google Ads', data:chart.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  ]);
 }
 
 function escHtml(s) {

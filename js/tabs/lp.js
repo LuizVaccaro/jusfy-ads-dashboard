@@ -4,8 +4,8 @@ let _lpData = { ga4: null, google: null, checkout: null };
 function lpSubtabBtn(id, label) {
   const active = _lpSubTab === id;
   return `<button onclick="switchLPSubTab('${id}')"
-    style="background:${active ? '#01AB7D22' : '#ffffff'};border:1px solid ${active ? '#01AB7D' : '#e5e7eb'};
-      color:${active ? '#01AB7D' : '#6b7280'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+    style="background:${active ? '#02A37822' : '#ffffff'};border:1px solid ${active ? '#02A378' : '#E7E8EC'};
+      color:${active ? '#02A378' : '#212121BF'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
       cursor:pointer;transition:all .15s">${label}</button>`;
 }
 
@@ -79,8 +79,8 @@ function renderLPGA4(lpAgg, tableId) {
   return `
   <div class="card">
     <div class="card-title">GA4 — Sessões x Conversão por Landing Page (${disp(S.start)} → ${disp(S.end)})</div>
-    <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
-      Apenas páginas do domínio <code style="color:#01AB7D">page.jusfy.com.br</code>. Conversões atribuídas à sessão de entrada (landing page), não à URL onde o purchase disparou.
+    <p style="font-size:12px;color:#212121BF;margin-bottom:12px">
+      Apenas páginas do domínio <code style="color:#02A378">page.jusfy.com.br</code>. Conversões atribuídas à sessão de entrada (landing page), não à URL onde o purchase disparou.
     </p>
     <div class="table-wrap"><table>
       <thead><tr>
@@ -113,7 +113,7 @@ function renderLPGoogle(rows0, tableId) {
   return `
   <div class="card">
     <div class="card-title">Google Ads — Cliques x Conversão por Landing Page (${disp(S.start)} → ${disp(S.end)})</div>
-    <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+    <p style="font-size:12px;color:#212121BF;margin-bottom:12px">
       URL final (unexpanded_final_url) do relatório de Landing Pages do Google Ads. Query string e parâmetros de tracking removidos para agrupar a mesma página usada em campanhas diferentes.
     </p>
     <div class="table-wrap"><table>
@@ -219,8 +219,8 @@ function renderLPCheckout(rows0, tableId) {
 
   <div class="card">
     <div class="card-title">Checkout — Sessões x Conversão x Bounce (${disp(S.start)} → ${disp(S.end)})</div>
-    <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
-      Páginas <code style="color:#01AB7D">app.jusfy.com.br/register*</code> usadas como landing page de checkout (link direto de campanha para cadastro). Variantes com <code style="color:#01AB7D">CAA</code> ou <code style="color:#01AB7D">OAB</code> no caminho são agrupadas em uma única linha.
+    <p style="font-size:12px;color:#212121BF;margin-bottom:12px">
+      Páginas <code style="color:#02A378">app.jusfy.com.br/register*</code> usadas como landing page de checkout (link direto de campanha para cadastro). Variantes com <code style="color:#02A378">CAA</code> ou <code style="color:#02A378">OAB</code> no caminho são agrupadas em uma única linha.
     </p>
     <div class="table-wrap"><table>
       <thead><tr>

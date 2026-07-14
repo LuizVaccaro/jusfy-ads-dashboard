@@ -1,14 +1,14 @@
 // ── Identidade visual "Jusfy" (herdada do dashboard antigo) — usada só nesta aba por enquanto ──
 const IG_THEME = {
-  bg:      '#f3f4f6',
+  bg:      '#FAFAFA',
   card:    '#ffffff',
-  border:  '#e5e7eb',
-  text:    '#111827',
-  muted:   '#6b7280',
-  faint:   '#9ca3af',
-  brand:   '#01AB7D',
-  brandDk: '#018f69',
-  brandLt: '#e0f5ef',
+  border:  '#E7E8EC',
+  text:    '#212121',
+  muted:   '#212121BF',
+  faint:   '#2121218C',
+  brand:   '#02A378',
+  brandDk: '#017858',
+  brandLt: '#e6f7f2',
 };
 
 // Mesma convenção de números do dashboard antigo (formatCompact): "15,1M" / "116,2k"
@@ -76,7 +76,7 @@ function igDeltaBadge(curr, prev) {
   const d = (curr - prev) / Math.abs(prev);
   const pct = (d * 100).toFixed(1);
   const up = d > 0;
-  const color = d === 0 ? IG_THEME.muted : up ? IG_THEME.brand : '#ef4444';
+  const color = d === 0 ? IG_THEME.muted : up ? IG_THEME.brand : '#e05a69';
   const arrow = d > 0 ? '↑' : d < 0 ? '↓' : '→';
   return `<span style="font-size:12px;font-weight:700;color:${color}">${arrow} ${d > 0 ? '+' : ''}${pct}%</span>`;
 }
@@ -94,7 +94,7 @@ function igMetricCard(label, dates, series, total, cmpTotal, color) {
 
 function igTypeBadge(mediaType, productType) {
   const label = productType === 'REELS' ? 'Reels' : mediaType === 'CAROUSEL_ALBUM' ? 'Carrossel' : mediaType === 'VIDEO' ? 'Vídeo' : 'Foto';
-  const colors = { Reels: '#f59e0b', Carrossel: '#3b82f6', 'Vídeo': '#8b5cf6', Foto: IG_THEME.brand };
+  const colors = { Reels: '#ed723e', Carrossel: '#0182ab', 'Vídeo': '#9551FB', Foto: IG_THEME.brand };
   const c = colors[label] || IG_THEME.muted;
   return `<span style="background:${c}18;color:${c};border:1px solid ${c}44;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700">${label}</span>`;
 }
@@ -117,7 +117,7 @@ function igMediaTable(rows, tableId) {
   for (const r of sorted) {
     const caption = (r.caption || '—').replace(/\n/g, ' ');
     const captionShort = caption.length > 60 ? caption.slice(0, 60) + '…' : caption;
-    body += `<tr style="border-bottom:1px solid #f3f4f6">
+    body += `<tr style="border-bottom:1px solid #FAFAFA">
       <td style="padding:9px 14px;text-align:center">${previewBtn(caption, r.thumbnail_url || r.media_url || '', '', r.permalink || '')}</td>
       <td style="padding:9px 14px">${igTypeBadge(r.media_type, r.media_product_type)}</td>
       <td style="padding:9px 14px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:${IG_THEME.text}" title="${caption.replace(/"/g,'&quot;')}">${captionShort}</td>
@@ -141,7 +141,7 @@ function igMediaTable(rows, tableId) {
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;background:${IG_THEME.card}">
-        <thead style="background:#f9fafb"><tr>
+        <thead style="background:#FAFAFA"><tr>
           <th style="padding:10px 14px;width:52px;border-bottom:1px solid ${IG_THEME.border}"></th>
           <th style="padding:10px 14px;text-align:left;font-size:11px;color:${IG_THEME.muted};text-transform:uppercase;font-weight:700;border-bottom:1px solid ${IG_THEME.border}">Tipo</th>
           ${th('Legenda','caption','asc','left')}
@@ -168,12 +168,12 @@ function renderInstagramBody() {
   const dates = daily.map(d => d.date);
 
   const cards = [
-    igMetricCard('Visualizações', dates, daily.map(d=>+d.views||0), s(daily,'views'), S.compare?s(cmpDaily,'views'):undefined, '#3b82f6'),
+    igMetricCard('Visualizações', dates, daily.map(d=>+d.views||0), s(daily,'views'), S.compare?s(cmpDaily,'views'):undefined, '#0182ab'),
     igMetricCard('Alcance', dates, daily.map(d=>+d.reach||0), s(daily,'reach'), S.compare?s(cmpDaily,'reach'):undefined, IG_THEME.brand),
-    igMetricCard('Interações com o Conteúdo', dates, daily.map(d=>+d.total_interactions||0), s(daily,'total_interactions'), S.compare?s(cmpDaily,'total_interactions'):undefined, '#8b5cf6'),
-    igMetricCard('Cliques no Link', dates, daily.map(d=>+d.website_clicks||0), s(daily,'website_clicks'), S.compare?s(cmpDaily,'website_clicks'):undefined, '#f59e0b'),
-    igMetricCard('Visitas ao Perfil', dates, daily.map(d=>+d.profile_views||0), s(daily,'profile_views'), S.compare?s(cmpDaily,'profile_views'):undefined, '#06b6d4'),
-    igMetricCard('Seguidores (Variação)', dates, daily.map(d=>+d.follower_delta||0), s(daily,'follower_delta'), S.compare?s(cmpDaily,'follower_delta'):undefined, '#ec4899'),
+    igMetricCard('Interações com o Conteúdo', dates, daily.map(d=>+d.total_interactions||0), s(daily,'total_interactions'), S.compare?s(cmpDaily,'total_interactions'):undefined, '#9551FB'),
+    igMetricCard('Cliques no Link', dates, daily.map(d=>+d.website_clicks||0), s(daily,'website_clicks'), S.compare?s(cmpDaily,'website_clicks'):undefined, '#ed723e'),
+    igMetricCard('Visitas ao Perfil', dates, daily.map(d=>+d.profile_views||0), s(daily,'profile_views'), S.compare?s(cmpDaily,'profile_views'):undefined, '#b38b00'),
+    igMetricCard('Seguidores (Variação)', dates, daily.map(d=>+d.follower_delta||0), s(daily,'follower_delta'), S.compare?s(cmpDaily,'follower_delta'):undefined, '#e05a69'),
     igMetricCard('Seguidores Totais', dates, daily.map(d=>d.follower_count!=null?+d.follower_count:null), lastFollowerTotal, S.compare?cmpLastFollowerTotal:undefined, IG_THEME.brandDk),
   ];
 

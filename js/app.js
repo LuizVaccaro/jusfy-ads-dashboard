@@ -74,7 +74,7 @@ async function renderTab(id) {
       <div class="card" style="text-align:center;padding:40px">
         <div style="font-size:32px;margin-bottom:12px">⚠️</div>
         <div style="font-size:15px;font-weight:600;margin-bottom:8px">Erro ao carregar dados</div>
-        <div style="font-size:13px;color:#6b7280">${e.message}</div>
+        <div style="font-size:13px;color:#212121BF">${e.message}</div>
       </div>`;
   }
 }
@@ -87,14 +87,14 @@ async function checkMetaToken() {
     });
     const d = await r.json();
     if (d.error || !d.valid) {
-      showTokenAlert('❌ Token Meta Ads inválido ou expirado! Renove agora para não perder dados.', '#ef4444', '#ef444444', '#ef444418');
+      showTokenAlert('❌ Token Meta Ads inválido ou expirado! Renove agora para não perder dados.', '#e05a69', '#e05a6944', '#e05a6918');
       return;
     }
     if (d.never_expires) return;
     if (d.days_left <= 14) {
-      const cor = d.days_left <= 5 ? '#ef4444' : '#f59e0b';
-      const bdr = d.days_left <= 5 ? '#ef444444' : '#f59e0b44';
-      const bg  = d.days_left <= 5 ? '#ef444418' : '#f59e0b18';
+      const cor = d.days_left <= 5 ? '#e05a69' : '#ed723e';
+      const bdr = d.days_left <= 5 ? '#e05a6944' : '#ed723e44';
+      const bg  = d.days_left <= 5 ? '#e05a6918' : '#ed723e18';
       showTokenAlert(`⚠️ Token Meta Ads expira em <strong>${d.days_left} dias</strong>. Renove antes de ${new Date(d.expires_at*1000).toLocaleDateString('pt-BR')}.`, cor, bdr, bg);
     }
   } catch(_) {}

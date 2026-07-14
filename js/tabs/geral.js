@@ -1,14 +1,3 @@
-let _geralChart = null;
-
-// Formatação compacta pro eixo do gráfico (1,2k / 3,4M)
-function fAxisCompact(n) {
-  if (n == null || isNaN(n)) return '0';
-  const abs = Math.abs(n);
-  if (abs >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'M';
-  if (abs >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'').replace('.', ',') + 'k';
-  return String(Math.round(n));
-}
-
 async function tabGeral() {
   loading();
   const [campAgg, dailyByPlatform, ga4Channels, cmpCampAgg, cmpGA4Channels, realConvTotals, campsRaw, convDaily] = await Promise.all([
@@ -75,7 +64,7 @@ async function tabGeral() {
   const days = Object.keys(dailyMap).sort();
   const diffDays = (new Date(S.end)-new Date(S.start))/864e5;
 
-  let chartLabels, chartG, chartM, chartBi, chartConv;
+  let chartLabels, chartG, chartM, chartBi, chartConv, chartTotalSpend;
   if (diffDays <= 45) {
     chartLabels = days.map(d => d.slice(5).split('-').reverse().join('/'));
     chartG    = days.map(d => dailyMap[d].g);
@@ -99,46 +88,18 @@ async function tabGeral() {
     chartBi   = months.map(mon => mMap[mon].bi);
     chartConv = months.map(mon => mMap[mon].conv);
   }
+  chartTotalSpend = chartG.map((g,i) => g + chartM[i] + chartBi[i]);
+  const chartCac = chartTotalSpend.map((s,i) => chartConv[i] > 0 ? s / chartConv[i] : null);
 
   function renderGeralChart() {
-    const canvas = document.getElementById('geralChart');
-    if (!canvas) return;
-    if (_geralChart) { _geralChart.destroy(); _geralChart = null; }
-    if (days.length === 0) return;
-    _geralChart = new Chart(canvas.getContext('2d'), {
-      data: {
-        labels: chartLabels,
-        datasets: [
-          { type:'bar', label:'Google Ads', data:chartG,  backgroundColor:'#3b82f6', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
-          { type:'bar', label:'Meta Ads',   data:chartM,  backgroundColor:'#f59e0b', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
-          { type:'bar', label:'Bing Ads',   data:chartBi, backgroundColor:'#10b981', borderRadius:4, borderWidth:0, stack:'spend', yAxisID:'y' },
-          { type:'line', label:'Cadastros Reais', data:chartConv, borderColor:'#01AB7D', backgroundColor:'#ffffff',
-            borderWidth:3, pointBackgroundColor:'#01AB7D', pointBorderWidth:2, pointRadius:3, tension:.3, fill:false, yAxisID:'y1' },
-        ],
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        interaction:{mode:'index', intersect:false},
-        scales:{
-          x:{ stacked:true, grid:{display:false}, ticks:{color:'#6b7280', font:{size:10}} },
-          y:{ stacked:true, position:'left', grid:{color:'#f3f4f6'},
-              ticks:{color:'#6b7280', font:{size:10}, callback:v=>'R$ '+fAxisCompact(v)},
-              title:{display:true, text:'Investimento', color:'#6b7280', font:{size:10,weight:'600'}} },
-          y1:{ position:'right', grid:{drawOnChartArea:false},
-               ticks:{color:'#01AB7D', font:{size:10}, callback:v=>fAxisCompact(v)},
-               title:{display:true, text:'Cadastros Reais', color:'#01AB7D', font:{size:10,weight:'600'}} },
-        },
-        plugins:{
-          legend:{display:true, position:'top', align:'end', labels:{color:'#374151', boxWidth:10, usePointStyle:true, font:{size:11}}},
-          tooltip:{
-            backgroundColor:'#111827', titleColor:'#fff', bodyColor:'#fff', padding:10, cornerRadius:8,
-            callbacks:{ label: ctx => ctx.dataset.type==='line'
-              ? `${ctx.dataset.label}: ${fN(ctx.parsed.y)}`
-              : `${ctx.dataset.label}: ${fR(ctx.parsed.y)}` },
-          },
-        },
-      },
-    });
+    renderComboChart('geralChart', chartLabels, [
+      { label:'Google Ads', data:chartG,  backgroundColor:'#01563F' },
+      { label:'Meta Ads',   data:chartM,  backgroundColor:'#02A378' },
+      { label:'Bing Ads',   data:chartBi, backgroundColor:'#41C78F' },
+    ], [
+      { label:'Cadastros Reais', data:chartConv, borderColor:'#212121', yAxisID:'y1' },
+      { label:'CAC', data:chartCac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+    ]);
   }
 
   // Sessões por origem (UTM source)
@@ -177,7 +138,7 @@ async function tabGeral() {
             <td class="r c-muted">${fP(pct)}</td>
           </tr>`;
         }).join('')}
-        <tr style="border-top:1px solid #e5e7eb">
+        <tr style="border-top:1px solid #E7E8EC">
           <td><strong>Total</strong></td>
           <td class="r c-blue"><strong>${fN(realTotal)}</strong></td>
           <td class="r c-muted">100%</td>
@@ -196,21 +157,21 @@ async function tabGeral() {
   <div class="card" style="margin-bottom:16px">
       <div class="card-title">Distribuição por Plataforma</div>
       ${[
-        {label:'Google Ads', badge:'bb', val:gSpend, cls:'c-blue',   pct:totalSpend>0?gSpend/totalSpend:0, bg:'#3b82f6'},
-        {label:'Meta Ads',   badge:'by', val:mSpend, cls:'c-yellow', pct:totalSpend>0?mSpend/totalSpend:0, bg:'#f59e0b'},
-        {label:'Bing Ads',   badge:'bg', val:biSpend, cls:'c-green', pct:totalSpend>0?biSpend/totalSpend:0, bg:'#10b981'},
+        {label:'Google Ads', val:gSpend,  pct:totalSpend>0?gSpend/totalSpend:0,  bg:'#01563F'},
+        {label:'Meta Ads',   val:mSpend,  pct:totalSpend>0?mSpend/totalSpend:0,  bg:'#02A378'},
+        {label:'Bing Ads',   val:biSpend, pct:totalSpend>0?biSpend/totalSpend:0, bg:'#41C78F'},
       ].map(x=>`
         <div style="margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span class="badge ${x.badge}">${x.label}</span>
-            <strong class="${x.cls}">${fR(x.val)}</strong>
+            <span class="badge" style="background:${x.bg}22;color:${x.bg};border:1px solid ${x.bg}44">${x.label}</span>
+            <strong style="color:#212121">${fR(x.val)}</strong>
           </div>
-          <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;margin-bottom:3px">
+          <div style="height:8px;background:#FAFAFA;border-radius:4px;overflow:hidden;margin-bottom:3px">
             <div style="height:100%;background:${x.bg};border-radius:4px;width:${(x.pct*100).toFixed(1)}%;transition:width .4s"></div>
           </div>
-          <div style="font-size:11px;color:#6b7280;text-align:right">${(x.pct*100).toFixed(1)}% do total</div>
+          <div style="font-size:11px;color:#212121BF;text-align:right">${(x.pct*100).toFixed(1)}% do total</div>
         </div>`).join('')}
-      <div style="border-top:1px solid #e5e7eb;padding-top:12px;display:flex;flex-direction:column;gap:6px">
+      <div style="border-top:1px solid #E7E8EC;padding-top:12px;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;justify-content:space-between;font-size:13px">
           <span class="c-muted">Total de dias</span><strong>${days.length}</strong>
         </div>

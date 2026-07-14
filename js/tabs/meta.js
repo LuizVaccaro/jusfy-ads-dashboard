@@ -5,8 +5,8 @@ let _metaCreativos = { topo: null, fundo: null };
 function metaSubtabBtn(id, label) {
   const active = _metaSubTab === id;
   return `<button onclick="switchMetaSubTab('${id}')"
-    style="background:${active ? '#f59e0b22' : '#ffffff'};border:1px solid ${active ? '#f59e0b' : '#e5e7eb'};
-      color:${active ? '#f59e0b' : '#6b7280'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+    style="background:${active ? '#ed723e22' : '#ffffff'};border:1px solid ${active ? '#ed723e' : '#E7E8EC'};
+      color:${active ? '#ed723e' : '#212121BF'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
       cursor:pointer;transition:all .15s">${label}</button>`;
 }
 
@@ -56,21 +56,27 @@ async function switchMetaSubTab(id) {
 
 function renderMetaCampanhas() {
   if (!_metaData) return;
-  const { agg } = _metaData;
+  const { agg, dailyChart } = _metaData;
   const camps = agg.map(r => r.campaign_name);
   _metaFilter = null;
   registerSortRenderer('meta', () => renderMetaTable());
 
   document.getElementById('m-subtab-body').innerHTML = `
   <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
-    <label style="font-size:12px;color:#6b7280;white-space:nowrap">Filtrar Campanha</label>
+    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
     <select id="metaCampFilter" onchange="renderMetaTable(this.value||null)"
-      style="background:#ffffff;border:1px solid #e5e7eb;color:#111827;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+      style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
       <option value="">Todas as Campanhas</option>
       ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
     </select>
   </div>
   <div class="kpi-grid cols-4" id="m-kpis" style="margin-bottom:20px"></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Investimento Diário × Cadastros Reais</div>
+    <div style="height:300px;position:relative">
+      ${dailyChart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="metaChart"></canvas>'}
+    </div>
+  </div>
   <div class="card">
     <div class="card-title">Meta Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
     <div class="table-wrap"><table>
@@ -80,6 +86,10 @@ function renderMetaCampanhas() {
   </div>`;
 
   renderMetaTable(null);
+  renderComboChart('metaChart', dailyChart.labels, [{ label:'Meta Ads', data:dailyChart.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:dailyChart.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:dailyChart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  ]);
 }
 
 let _metaFilter = null;
@@ -139,13 +149,16 @@ async function tabMeta() {
   _metaSubTab = 'campanhas';
   _metaCreativos = { topo: null, fundo: null };
 
-  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows] = await Promise.all([
+  const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
     fetchGA4SessionsByCampaign(S.start, S.end),
     S.compare && S.cmpStart ? fetchGA4SessionsByCampaign(S.cmpStart, S.cmpEnd) : [],
     fetchJusfyConversionsByCampaign(S.start, S.end),
     S.compare && S.cmpStart ? fetchJusfyConversionsByCampaign(S.cmpStart, S.cmpEnd) : [],
+    fetchCampDailyByPlatform(S.start, S.end),
+    fetchJusfyConversionsDailyAgg(S.start, S.end),
+    fetchCamps(S.start, S.end),
   ]);
 
   const sessMap    = Object.fromEntries(ga4Camp.map(r => [(r.campaign||'').toLowerCase(), +r.sessions||0]));
@@ -170,7 +183,13 @@ async function tabMeta() {
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 
-  _metaData = { agg, cmpAgg, cmpMap, hasCmp };
+  const spendByDate = {};
+  for (const r of dailyByPlatform) if (r.platform === 'meta') spendByDate[r.date] = (spendByDate[r.date]||0) + (+r.spend||0);
+  const campaignLookup = buildCampaignLookup(campsRaw);
+  const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
+  const dailyChart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Meta Ads');
+
+  _metaData = { agg, cmpAgg, cmpMap, hasCmp, dailyChart };
 
   document.getElementById('content').innerHTML = `
     <div id="m-subtabs">${renderMetaSubtabs()}</div>
