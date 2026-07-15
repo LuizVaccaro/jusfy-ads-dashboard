@@ -45,8 +45,12 @@ async function switchMetaSubTab(id) {
   if (cached && cached.start === S.start && cached.end === S.end) {
     ads = cached.ads;
   } else {
-    const rows = await supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`);
-    ads = aggMetaByAd(rows);
+    const [rows, realRows] = await Promise.all([
+      supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`),
+      fetchCreativeRealConversions(S.start, S.end),
+    ]);
+    const realMap = buildCreativeConversionsMap(realRows);
+    ads = mergeCreativeRealConversions(aggMetaByAd(rows), realMap);
     _metaCreativos[id] = { start: S.start, end: S.end, ads };
   }
 

@@ -213,7 +213,7 @@ function metaTable(ads, title, campaignBadge, tableId) {
     const tpRate  = ad.tpRate, p50Rate = ad.p50Rate, p25Rate = ad.p25Rate, cpt = ad.cpt;
     rows += '<tr>'
       + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
-      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
+      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + adsetBreakdownHtml(ad.adsetBreakdown) + '</td>'
       + '<td>' + statusBadge(ad.status) + '</td>'
       + '<td class="r">' + fR(ad.spend) + '</td>'
       + '<td class="r">' + fN(ad.reach) + '</td>'
@@ -224,6 +224,7 @@ function metaTable(ads, title, campaignBadge, tableId) {
       + '<td>' + retentionBars(tpRate, p50Rate, p25Rate) + '</td>'
       + '<td class="r">' + fN(ad.video_p25) + '<br><span style="font-size:10px;color:#212121BF">' + p25Rate.toFixed(1) + '%</span></td>'
       + '<td class="r">' + fN(ad.video_p50) + '<br><span style="font-size:10px;color:#212121BF">' + p50Rate.toFixed(1) + '%</span></td>'
+      + '<td class="r">' + fN(ad.conversions||0) + '</td>'
       + '</tr>';
   }
   return '<div class="card" style="margin-bottom:16px">'
@@ -240,7 +241,19 @@ function metaTable(ads, title, campaignBadge, tableId) {
     + sortTh(tableId,'Frequência','freq')
     + sortTh(tableId,'ThruPlay','thruplay') + sortTh(tableId,'Custo/ThruPlay','cpt')
     + '<th>Retenção</th>' + sortTh(tableId,'Views 25%','video_p25') + sortTh(tableId,'Views 50%','video_p50')
+    + sortTh(tableId,'Cadastros Reais','conversions')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
+// Formata a quebra por conjunto de anúncios (adsetBreakdown: {adset_name: cadastros}) como texto
+// secundário abaixo do nome do criativo — mesmo criativo pode ter performance bem diferente em
+// conjuntos diferentes, e o total sozinho esconde isso. Só mostra quando há 2+ conjuntos.
+function adsetBreakdownHtml(breakdown) {
+  if (!breakdown) return '';
+  const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
+  if (entries.length < 2) return '';
+  const parts = entries.map(([name, n]) => escHtml(name) + ' (' + fN(n) + ')').join(' · ');
+  return '<div style="font-size:10px;color:#212121BF;white-space:normal;word-break:break-word;margin-top:2px" title="Cadastros reais por conjunto de anúncios">' + parts + '</div>';
 }
 
 function metaFundoTable(ads, title, campaignBadge, tableId) {
@@ -261,7 +274,7 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
     const cpaCls = cpa == null ? 'c-muted' : cpa < 60 ? 'c-green' : cpa < 130 ? 'c-yellow' : 'c-red';
     rows += '<tr>'
       + '<td style="text-align:center">' + previewBtn(ad.ad_name, ad.thumbnail_url || '', '', ad.permalink_url || 'https://business.facebook.com') + '</td>'
-      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + '</td>'
+      + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + (ad.ad_name || '—') + adsetBreakdownHtml(ad.adsetBreakdown) + '</td>'
       + '<td>' + statusBadge(ad.status) + '</td>'
       + '<td class="r c-brand">' + fR(ad.spend) + '</td>'
       + '<td class="r">' + fN(ad.clicks) + '</td>'
@@ -278,13 +291,13 @@ function metaFundoTable(ads, title, campaignBadge, tableId) {
     + '<span class="badge by">' + sorted.length + ' ADS</span>'
     + (campaignBadge ? '<span style="font-size:11px;color:#212121BF;font-weight:400">' + campaignBadge + '</span>' : '')
     + '</div>'
-    + '<span style="font-size:11px;color:#212121BF;font-weight:400">Clique em &#x25B6; para visualizar o criativo</span>'
+    + '<span style="font-size:11px;color:#212121BF;font-weight:400">Cadastros reais (Metabase) · clique em &#x25B6; para visualizar o criativo</span>'
     + '</div>'
     + '<div class="table-wrap"><table>'
     + '<thead><tr><th style="width:52px">Preview</th>' + sortTh(tableId,'Anúncio','ad_name','asc','') + sortTh(tableId,'Status','status','asc','')
     + sortTh(tableId,'Gasto','spend') + sortTh(tableId,'Cliques','clicks') + sortTh(tableId,'Impressões','impressions')
     + sortTh(tableId,'Frequência','freq')
-    + sortTh(tableId,'CTR','ctr') + sortTh(tableId,'Conv.','conversions') + sortTh(tableId,'CPA','cpa')
+    + sortTh(tableId,'CTR','ctr') + sortTh(tableId,'Cadastros Reais','conversions') + sortTh(tableId,'CAC Real','cpa')
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
@@ -356,11 +369,13 @@ async function tabAniversario() {
 
   // Queries direcionadas para evitar o limite de 1000 rows do Supabase REST
   // (meta_creatives tem >1000 rows e os ads de aniversário começaram em 18-19/jun)
-  const [metaTopoRows, metaFundoRows, googleRows] = await Promise.all([
+  const [metaTopoRows, metaFundoRows, googleRows, realRows] = await Promise.all([
     supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*branding_topo*&order=date.asc`),
     supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*vendas_fundo*&ad_name=ilike.*pilula*&order=date.asc`),
     fetchGoogleCreatives(S.start, S.end),
+    fetchCreativeRealConversions(S.start, S.end),
   ]);
+  const realMap = buildCreativeConversionsMap(realRows);
 
   // Filtro JS adicional: dentro dos branding_topo, só os de aniversário
   const metaTopoRaw  = metaTopoRows.filter(r => norm(r.campaign_name).includes('aniversar'));
@@ -370,8 +385,8 @@ async function tabAniversario() {
     norm(r.ad_name).includes('aniversar')
   );
 
-  const metaTopo  = aggMetaByAd(metaTopoRaw);
-  const metaFundo = aggMetaByAd(metaFundoRaw);
+  const metaTopo  = mergeCreativeRealConversions(aggMetaByAd(metaTopoRaw), realMap);
+  const metaFundo = mergeCreativeRealConversions(aggMetaByAd(metaFundoRaw), realMap);
   // Google: agrupa por ad_name (mesmo criativo em diferentes conjuntos)
   const googleAni = aggGoogleByName(googleAniRaw);
 

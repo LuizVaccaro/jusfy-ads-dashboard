@@ -109,6 +109,38 @@ function aggregateRealConversionsByChannel(rows, campaignLookup) {
   return byChannel;
 }
 
+// ── Match de conversões reais por criativo (jusfy_creative_conversions_daily, Meta) ──
+// Chave de match é o ad_name (bate ~86% com meta_creatives — os que faltam são anúncios pausados/
+// removidos antes do sync manual de criativos rodar). O conjunto de anúncios (adset_name) entra só
+// como quebra secundária: o mesmo criativo pode rodar em conjuntos diferentes com performance bem
+// diferente, mas o total do criativo é sempre a soma de todos os conjuntos onde ele apareceu.
+function buildCreativeConversionsMap(rows) {
+  const map = {};
+  for (const r of rows || []) {
+    const key = r.ad_name;
+    if (!key) continue;
+    if (!map[key]) map[key] = { total: 0, byAdset: {} };
+    const n = +r.cadastros || 0;
+    map[key].total += n;
+    const adset = r.adset_name || '(sem conjunto)';
+    map[key].byAdset[adset] = (map[key].byAdset[adset] || 0) + n;
+  }
+  return map;
+}
+
+// Substitui ad.conversions (número reportado pela plataforma) pelos cadastros reais do Metabase,
+// somados por criativo. Guarda o detalhe por conjunto em ad.adsetBreakdown para exibição secundária.
+function mergeCreativeRealConversions(ads, realMap) {
+  return ads.map(ad => {
+    const real = realMap[ad.ad_name];
+    return {
+      ...ad,
+      conversions: real ? real.total : 0,
+      adsetBreakdown: real ? real.byAdset : null,
+    };
+  });
+}
+
 // Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
 // (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
 // ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,

@@ -97,6 +97,7 @@ async function fetchJusfyConversionsTotals(s, e) { return supaRpc('get_jusfy_con
 async function fetchJusfyConversionsDailyAgg(s, e) { return supaRpc('get_jusfy_conversions_daily_agg', { p_start: s, p_end: e }); }
 async function fetchInstagramMediaAgg(s, e)        { return supaRpc('get_instagram_media_agg',        { p_start: s, p_end: e }); }
 async function fetchInstagramAccountDailyAgg(s, e) { return supaRpc('get_instagram_account_daily_agg', { p_start: s, p_end: e }); }
+async function fetchCreativeRealConversions(s, e)  { return supaRpc('get_creative_real_conversions',   { p_start: s, p_end: e }); }
 
 // ── Match de conversões reais (Metabase) — ver js/conversions-match.js ──
 
