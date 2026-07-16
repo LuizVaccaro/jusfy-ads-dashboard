@@ -2,6 +2,27 @@
 let _diarioData = null;
 let _diarioChannelFilter = null;
 let _diarioCategoryFilter = null;
+let _diarioWeekdayFilter = null;
+
+const WEEKDAY_LABELS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const weekdayOf = dateStr => new Date(dateStr+'T12:00:00').getDay();
+
+// Recalcula os totais (KPIs + rodapé) a partir de um subconjunto de linhas — usado quando o filtro
+// de dia da semana reduz as linhas exibidas, pra manter os totais coerentes com o que está na tabela.
+function aggregateDiarioRows(rows, hasCmpBase) {
+  const totSpend = sum(rows, 'spend');
+  const totSess  = sum(rows, 'sessions');
+  const totConv  = sum(rows, 'conversions');
+  const totCAC   = totConv > 0 ? totSpend / totConv : null;
+  const totTX    = totSess > 0 ? totConv / totSess * 100 : 0;
+
+  const withCmp = hasCmpBase ? rows.filter(r => r.cmpRow) : [];
+  const cTotSpend = hasCmpBase ? withCmp.reduce((s,r)=>s+r.cmpRow.spend, 0) : undefined;
+  const cTotConv  = hasCmpBase ? withCmp.reduce((s,r)=>s+r.cmpRow.conversions, 0) : undefined;
+  const cTotCAC   = (cTotConv && cTotSpend && cTotConv > 0) ? cTotSpend / cTotConv : undefined;
+
+  return { totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotConv, cTotCAC };
+}
 
 function spendByDate(campRows, channelFilter, categoryFilter) {
   const m = {};
@@ -80,13 +101,19 @@ function buildDiarioView(data, channelFilter, categoryFilter) {
   return { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp: hasCmpBase };
 }
 
-function renderDiarioBody(filterChannel, filterCategory) {
+function renderDiarioBody(filterChannel, filterCategory, filterWeekday) {
   if (filterChannel !== undefined)  _diarioChannelFilter  = filterChannel;
   if (filterCategory !== undefined) _diarioCategoryFilter = filterCategory;
+  if (filterWeekday !== undefined)  _diarioWeekdayFilter  = filterWeekday;
   if (!_diarioData) return;
 
   const view = buildDiarioView(_diarioData, _diarioChannelFilter, _diarioCategoryFilter);
-  const { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp } = view;
+  let { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp } = view;
+
+  if (_diarioWeekdayFilter !== null && _diarioWeekdayFilter !== '') {
+    rows = rows.filter(r => weekdayOf(r.date) === +_diarioWeekdayFilter);
+    ({ totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotConv, cTotCAC } = aggregateDiarioRows(rows, hasCmp));
+  }
 
   const st     = getSort('diario', 'date', 'desc');
   const sorted = sortRows(rows, st.key, st.dir);
@@ -106,11 +133,19 @@ function renderDiarioBody(filterChannel, filterCategory) {
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
-      <select id="diarioCategoryFilter" onchange="renderDiarioBody(undefined, this.value||null)"
+      <select id="diarioCategoryFilter" onchange="renderDiarioBody(undefined, this.value||null, undefined)"
         style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
         <option value="" ${!_diarioCategoryFilter?'selected':''}>Todas as Categorias</option>
         <option value="Non brand" ${_diarioCategoryFilter==='Non brand'?'selected':''}>Non brand</option>
         <option value="Brand Search" ${_diarioCategoryFilter==='Brand Search'?'selected':''}>Brand Search</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Dia da Semana</label>
+      <select id="diarioWeekdayFilter" onchange="renderDiarioBody(undefined, undefined, this.value)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        <option value="" ${!_diarioWeekdayFilter?'selected':''}>Todos os Dias</option>
+        ${WEEKDAY_LABELS.map((label, idx) => `<option value="${idx}" ${String(_diarioWeekdayFilter)===String(idx)?'selected':''}>${label}</option>`).join('')}
       </select>
     </div>
   </div>
@@ -131,6 +166,7 @@ function renderDiarioBody(filterChannel, filterCategory) {
     <div class="table-wrap"><table>
       <thead><tr>
         ${sortTh('diario','Data','date','desc','')}
+        <th>Dia</th>
         ${sortTh('diario','Sessões','sessions')}
         ${sortTh('diario','Cadastros','conversions')}
         ${sortTh('diario','TX. Conversão','tx')}
@@ -145,6 +181,7 @@ function renderDiarioBody(filterChannel, filterCategory) {
           const noData = r.spend === 0 && r.sessions === 0;
           return `<tr style="${noData ? 'opacity:.45' : ''}">
             <td><strong>${disp(r.date)}</strong></td>
+            <td class="c-muted">${WEEKDAY_LABELS[weekdayOf(r.date)]}</td>
             <td class="r">${fN(r.sessions)}</td>
             <td class="r"><strong>${fN(Math.round(r.conversions))}</strong></td>
             <td class="r ${txCls}">${fP(r.tx)}</td>
@@ -155,11 +192,12 @@ function renderDiarioBody(filterChannel, filterCategory) {
               <td class="r">${deltaHtml(r.spend, r.cmpRow.spend) || fR(r.cmpRow.spend)}</td>
             ` : hasCmp ? '<td class="r c-muted">—</td><td class="r c-muted">—</td>' : ''}
           </tr>`;
-        }).join('') : emptyRow(hasCmp ? 8 : 6)}
+        }).join('') : emptyRow(hasCmp ? 9 : 7)}
       </tbody>
       <tfoot>
         <tr style="border-top:2px solid #E7E8EC;background:#ffffff">
           <td><strong>Total</strong></td>
+          <td></td>
           <td class="r"><strong>${fN(totSess)}</strong></td>
           <td class="r"><strong>${fN(Math.round(totConv))}</strong></td>
           <td class="r"><strong>${fP(totTX)}</strong></td>
