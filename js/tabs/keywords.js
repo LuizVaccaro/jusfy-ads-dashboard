@@ -1,0 +1,72 @@
+// ── Tabela de palavras-chave (Google Ads / Bing Ads), reaproveitada pelas duas abas ──
+// Guiada pelos cadastros reais (jusfy_keyword_conversions_daily), enriquecida com gasto/cliques do
+// relatório de termos de busca (search_term_daily) quando o match bate. Sem gasto -> sem CAC, mas o
+// cadastro real continua exibido.
+
+function renderKeywordTable(rows, tableId, platformLabel) {
+  if (!rows.length) return `<div class="card"><div class="card-title">🔎 ${platformLabel} — Palavras-chave</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem cadastros reais atribuídos a palavras-chave no período</div></div>`;
+
+  const st     = getSort(tableId, 'cadastros', 'desc');
+  const sorted = sortRows(rows, st.key, st.dir);
+  const totSpend = rows.reduce((s,r)=>s+(r.spend||0),0);
+  const totCad   = rows.reduce((s,r)=>s+(r.cadastros||0),0);
+  const semGasto = rows.filter(r=>r.spend==null).length;
+
+  const bodyRows = sorted.map(r => {
+    const cpaCls = r.cpa==null ? 'c-muted' : r.cpa<100 ? 'c-green' : r.cpa<200 ? 'c-yellow' : 'c-red';
+    return `<tr>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px"><strong>${escHtml(r.keyword||'—')}</strong></td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" class="c-muted">${escHtml(r.campaign_name||'—')}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" class="c-muted">${escHtml(r.ad_group_name||'—')}</td>
+      <td class="r">${r.clicks!=null ? fN(r.clicks) : '<span class="c-muted">—</span>'}</td>
+      <td class="r c-brand">${r.spend!=null ? fR(r.spend) : '<span class="c-muted">sem gasto sincronizado</span>'}</td>
+      <td class="r"><strong>${fN(r.cadastros)}</strong></td>
+      <td class="r ${cpaCls}">${r.cpa!=null ? fR(r.cpa) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span>🔎 ${platformLabel} — Palavras-chave</span>
+        <span class="badge by">${sorted.length} TERMOS</span>
+      </div>
+      <span style="font-size:11px;color:#212121BF;font-weight:400">${fN(totCad)} cadastros reais · ${fR(totSpend)} gasto atribuído${semGasto?` · ${semGasto} termo(s) sem gasto sincronizado`:''}</span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        ${sortTh(tableId,'Termo de Busca','keyword','asc','')}
+        ${sortTh(tableId,'Campanha','campaign_name','asc','')}
+        ${sortTh(tableId,'Grupo de Anúncios','ad_group_name','asc','')}
+        ${sortTh(tableId,'Cliques','clicks')}
+        ${sortTh(tableId,'Gasto','spend')}
+        ${sortTh(tableId,'Cadastros Reais','cadastros')}
+        ${sortTh(tableId,'CAC Real','cpa')}
+      </tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// Busca cadastros reais + gasto já casados no Postgres (get_keyword_performance) para uma
+// plataforma ('google_ads' ou 'bing_ads'). O join (cadastros real x search_term_daily) é feito no
+// banco porque o lado do gasto tem dezenas de milhares de linhas no período — inviável trazer pro
+// cliente e casar em JS sem estourar o limite de linhas do Supabase.
+async function fetchKeywordTableData(platform, start, end) {
+  const rows = await fetchKeywordPerformance(start, end);
+  return rows.filter(r => r.platform === platform).map(r => {
+    const spend = r.spend != null ? +r.spend : null;
+    const cadastros = +r.cadastros || 0;
+    return {
+      platform: r.platform,
+      campaign_name: r.campaign_name,
+      ad_group_name: r.ad_group_name,
+      keyword: r.keyword,
+      cadastros,
+      spend,
+      clicks: r.clicks != null ? +r.clicks : null,
+      impressions: r.impressions != null ? +r.impressions : null,
+      cpa: spend != null && cadastros > 0 ? spend / cadastros : null,
+    };
+  });
+}

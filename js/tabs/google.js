@@ -1,6 +1,81 @@
 let _googleData = null;
 let _googleFilter = null;
 let _googleCategoryFilter = null;
+let _googleSubTab = 'campanhas';
+let _googleKeywords = null;
+
+function googleSubtabBtn(id, label) {
+  const active = _googleSubTab === id;
+  return `<button onclick="switchGoogleSubTab('${id}')"
+    style="background:${active ? '#0182ab22' : '#ffffff'};border:1px solid ${active ? '#0182ab' : '#E7E8EC'};
+      color:${active ? '#0182ab' : '#212121BF'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .15s">${label}</button>`;
+}
+
+function renderGoogleSubtabs() {
+  return `<div style="display:flex;gap:8px;margin-bottom:20px">
+    ${googleSubtabBtn('campanhas', 'Campanhas')}
+    ${googleSubtabBtn('keywords', 'Palavras-chave')}
+  </div>`;
+}
+
+async function switchGoogleSubTab(id) {
+  _googleSubTab = id;
+  document.getElementById('go-subtabs').innerHTML = renderGoogleSubtabs();
+  const body = document.getElementById('go-subtab-body');
+  if (id === 'campanhas') { renderGoogleCampanhas(); return; }
+
+  body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando palavras-chave…</div>`;
+  if (!_googleKeywords || _googleKeywords.start !== S.start || _googleKeywords.end !== S.end) {
+    const rows = await fetchKeywordTableData('google_ads', S.start, S.end);
+    _googleKeywords = { start: S.start, end: S.end, rows };
+  }
+  registerSortRenderer('google-keywords', () => { if (_googleSubTab === 'keywords') body.innerHTML = renderKeywordTable(_googleKeywords.rows, 'google-keywords', 'Google Ads'); });
+  if (_googleSubTab === 'keywords') body.innerHTML = renderKeywordTable(_googleKeywords.rows, 'google-keywords', 'Google Ads');
+}
+
+function renderGoogleCampanhas() {
+  document.getElementById('go-subtab-body').innerHTML = `
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
+      <select id="googleCampFilter" onchange="renderGoogleTable(this.value||null, undefined)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+        <option value="">Todas as Campanhas</option>
+        ${_googleData.agg.map(r=>r.campaign_name).map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
+      <select id="googleCategoryFilter" onchange="renderGoogleTable(undefined, this.value||null)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        <option value="">Todas as Categorias</option>
+        <option value="Non brand">Non brand</option>
+        <option value="Brand Search">Brand Search</option>
+      </select>
+    </div>
+  </div>
+  <div class="kpi-grid cols-4" id="g-kpis" style="margin-bottom:20px"></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Investimento Diário × Cadastros Reais</div>
+    <div style="height:300px;position:relative">
+      ${_googleData.chart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="googleChart"></canvas>'}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Google Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
+    <div class="table-wrap"><table>
+      <thead><tr id="g-thead"></tr></thead>
+      <tbody id="g-tbody"></tbody>
+    </table></div>
+  </div>`;
+
+  renderGoogleTable(null);
+  renderComboChart('googleChart', _googleData.chart.labels, [{ label:'Google Ads', data:_googleData.chart.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:_googleData.chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:_googleData.chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  ]);
+}
 
 function renderGoogleTable(filterCamp, filterCategory) {
   if (filterCamp !== undefined) _googleFilter = filterCamp;
@@ -56,6 +131,8 @@ function renderGoogleTable(filterCamp, filterCategory) {
 
 async function tabGoogle() {
   loading();
+  _googleSubTab = 'campanhas';
+  _googleKeywords = null;
   const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
@@ -90,13 +167,6 @@ async function tabGoogle() {
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 
-  _googleData = { agg, cmpAgg, cmpMap, hasCmp };
-  _googleFilter = null;
-  _googleCategoryFilter = null;
-  registerSortRenderer('google', () => renderGoogleTable());
-
-  const camps = agg.map(r => r.campaign_name);
-
   // Gráfico diário: gasto Google Ads x cadastros reais atribuídos ao Google
   const spendByDate = {};
   for (const r of dailyByPlatform) if (r.platform === 'google_ads') spendByDate[r.date] = (spendByDate[r.date]||0) + (+r.spend||0);
@@ -104,46 +174,16 @@ async function tabGoogle() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Google Ads');
 
-  document.getElementById('content').innerHTML = `
-  <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
-      <select id="googleCampFilter" onchange="renderGoogleTable(this.value||null, undefined)"
-        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
-        <option value="">Todas as Campanhas</option>
-        ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
-      </select>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
-      <select id="googleCategoryFilter" onchange="renderGoogleTable(undefined, this.value||null)"
-        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
-        <option value="">Todas as Categorias</option>
-        <option value="Non brand">Non brand</option>
-        <option value="Brand Search">Brand Search</option>
-      </select>
-    </div>
-  </div>
-  <div class="kpi-grid cols-4" id="g-kpis" style="margin-bottom:20px"></div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Investimento Diário × Cadastros Reais</div>
-    <div style="height:300px;position:relative">
-      ${chart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="googleChart"></canvas>'}
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Google Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
-    <div class="table-wrap"><table>
-      <thead><tr id="g-thead"></tr></thead>
-      <tbody id="g-tbody"></tbody>
-    </table></div>
-  </div>`;
+  _googleData = { agg, cmpAgg, cmpMap, hasCmp, chart };
+  _googleFilter = null;
+  _googleCategoryFilter = null;
+  registerSortRenderer('google', () => renderGoogleTable());
 
-  renderGoogleTable(null);
-  renderComboChart('googleChart', chart.labels, [{ label:'Google Ads', data:chart.spend, backgroundColor:'#017858' }], [
-    { label:'Cadastros Reais', data:chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
-    { label:'CAC', data:chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
-  ]);
+  document.getElementById('content').innerHTML = `
+    <div id="go-subtabs">${renderGoogleSubtabs()}</div>
+    <div id="go-subtab-body"></div>`;
+
+  renderGoogleCampanhas();
 }
 
 function escHtml(s) {

@@ -1,6 +1,81 @@
 let _bingData = null;
 let _bingFilter = null;
 let _bingCategoryFilter = null;
+let _bingSubTab = 'campanhas';
+let _bingKeywords = null;
+
+function bingSubtabBtn(id, label) {
+  const active = _bingSubTab === id;
+  return `<button onclick="switchBingSubTab('${id}')"
+    style="background:${active ? '#9551FB22' : '#ffffff'};border:1px solid ${active ? '#9551FB' : '#E7E8EC'};
+      color:${active ? '#9551FB' : '#212121BF'};border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .15s">${label}</button>`;
+}
+
+function renderBingSubtabs() {
+  return `<div style="display:flex;gap:8px;margin-bottom:20px">
+    ${bingSubtabBtn('campanhas', 'Campanhas')}
+    ${bingSubtabBtn('keywords', 'Palavras-chave')}
+  </div>`;
+}
+
+async function switchBingSubTab(id) {
+  _bingSubTab = id;
+  document.getElementById('bi-subtabs').innerHTML = renderBingSubtabs();
+  const body = document.getElementById('bi-subtab-body');
+  if (id === 'campanhas') { renderBingCampanhas(); return; }
+
+  body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando palavras-chave…</div>`;
+  if (!_bingKeywords || _bingKeywords.start !== S.start || _bingKeywords.end !== S.end) {
+    const rows = await fetchKeywordTableData('bing_ads', S.start, S.end);
+    _bingKeywords = { start: S.start, end: S.end, rows };
+  }
+  registerSortRenderer('bing-keywords', () => { if (_bingSubTab === 'keywords') body.innerHTML = renderKeywordTable(_bingKeywords.rows, 'bing-keywords', 'Bing Ads'); });
+  if (_bingSubTab === 'keywords') body.innerHTML = renderKeywordTable(_bingKeywords.rows, 'bing-keywords', 'Bing Ads');
+}
+
+function renderBingCampanhas() {
+  document.getElementById('bi-subtab-body').innerHTML = `
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
+      <select id="bingCampFilter" onchange="renderBingTable(this.value||null, undefined)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
+        <option value="">Todas as Campanhas</option>
+        ${_bingData.agg.map(r=>r.campaign_name).map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
+      <select id="bingCategoryFilter" onchange="renderBingTable(undefined, this.value||null)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
+        <option value="">Todas as Categorias</option>
+        <option value="Non brand">Non brand</option>
+        <option value="Brand Search">Brand Search</option>
+      </select>
+    </div>
+  </div>
+  <div class="kpi-grid cols-4" id="bi-kpis" style="margin-bottom:20px"></div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Investimento Diário × Cadastros Reais</div>
+    <div style="height:300px;position:relative">
+      ${_bingData.chart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="bingChart"></canvas>'}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Bing Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
+    <div class="table-wrap"><table>
+      <thead><tr id="bi-thead"></tr></thead>
+      <tbody id="bi-tbody"></tbody>
+    </table></div>
+  </div>`;
+
+  renderBingTable(null);
+  renderComboChart('bingChart', _bingData.chart.labels, [{ label:'Bing Ads', data:_bingData.chart.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:_bingData.chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:_bingData.chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  ]);
+}
 
 function renderBingTable(filterCamp, filterCategory) {
   if (filterCamp !== undefined) _bingFilter = filterCamp;
@@ -56,6 +131,8 @@ function renderBingTable(filterCamp, filterCategory) {
 
 async function tabBing() {
   loading();
+  _bingSubTab = 'campanhas';
+  _bingKeywords = null;
   const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
     S.compare && S.cmpStart ? fetchCampAgg(S.cmpStart, S.cmpEnd) : [],
@@ -90,57 +167,20 @@ async function tabBing() {
   const cmpMap = Object.fromEntries(cmpAgg.map(r=>[r.campaign_name,r]));
   const hasCmp = S.compare && cmpAgg.length > 0;
 
-  _bingData = { agg, cmpAgg, cmpMap, hasCmp };
-  _bingFilter = null;
-  _bingCategoryFilter = null;
-  registerSortRenderer('bing', () => renderBingTable());
-
-  const camps = agg.map(r => r.campaign_name);
-
   const spendByDate = {};
   for (const r of dailyByPlatform) if (r.platform === 'bing_ads') spendByDate[r.date] = (spendByDate[r.date]||0) + (+r.spend||0);
   const campaignLookup = buildCampaignLookup(campsRaw);
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Bing Ads');
 
-  document.getElementById('content').innerHTML = `
-  <div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
-      <select id="bingCampFilter" onchange="renderBingTable(this.value||null, undefined)"
-        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
-        <option value="">Todas as Campanhas</option>
-        ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
-      </select>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
-      <select id="bingCategoryFilter" onchange="renderBingTable(undefined, this.value||null)"
-        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
-        <option value="">Todas as Categorias</option>
-        <option value="Non brand">Non brand</option>
-        <option value="Brand Search">Brand Search</option>
-      </select>
-    </div>
-  </div>
-  <div class="kpi-grid cols-4" id="bi-kpis" style="margin-bottom:20px"></div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Investimento Diário × Cadastros Reais</div>
-    <div style="height:300px;position:relative">
-      ${chart.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="bingChart"></canvas>'}
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Bing Ads — Campanhas (${disp(S.start)} → ${disp(S.end)})</div>
-    <div class="table-wrap"><table>
-      <thead><tr id="bi-thead"></tr></thead>
-      <tbody id="bi-tbody"></tbody>
-    </table></div>
-  </div>`;
+  _bingData = { agg, cmpAgg, cmpMap, hasCmp, chart };
+  _bingFilter = null;
+  _bingCategoryFilter = null;
+  registerSortRenderer('bing', () => renderBingTable());
 
-  renderBingTable(null);
-  renderComboChart('bingChart', chart.labels, [{ label:'Bing Ads', data:chart.spend, backgroundColor:'#017858' }], [
-    { label:'Cadastros Reais', data:chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
-    { label:'CAC', data:chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
-  ]);
+  document.getElementById('content').innerHTML = `
+    <div id="bi-subtabs">${renderBingSubtabs()}</div>
+    <div id="bi-subtab-body"></div>`;
+
+  renderBingCampanhas();
 }
