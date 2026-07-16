@@ -1,7 +1,9 @@
 // ── Tabela de palavras-chave (Google Ads / Bing Ads), reaproveitada pelas duas abas ──
-// Guiada pelos cadastros reais (jusfy_keyword_conversions_daily), enriquecida com gasto/cliques do
-// relatório de termos de busca (search_term_daily) quando o match bate. Sem gasto -> sem CAC, mas o
-// cadastro real continua exibido.
+// Guiada pelos cadastros reais (jusfy_keyword_conversions_daily), enriquecida com gasto/cliques da
+// KEYWORD configurada pelo anunciante (search_term_daily, apesar do nome da tabela, guarda a keyword —
+// ad_group_criterion.keyword.text no Google / coluna Keyword no Bing — não o termo de busca literal;
+// o utm_term que a Jusfy manda é o {keyword} do ValueTrack, confirmado em 16/07/2026). Sem gasto -> sem
+// CAC, mas o cadastro real continua exibido.
 
 function renderKeywordTable(rows, tableId, platformLabel) {
   if (!rows.length) return `<div class="card"><div class="card-title">🔎 ${platformLabel} — Palavras-chave</div><div class="c-muted" style="padding:20px;text-align:center;font-size:13px">Sem cadastros reais atribuídos a palavras-chave no período</div></div>`;
@@ -29,13 +31,13 @@ function renderKeywordTable(rows, tableId, platformLabel) {
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
         <span>🔎 ${platformLabel} — Palavras-chave</span>
-        <span class="badge by">${sorted.length} TERMOS</span>
+        <span class="badge by">${sorted.length} KEYWORDS</span>
       </div>
-      <span style="font-size:11px;color:#212121BF;font-weight:400">${fN(totCad)} cadastros reais · ${fR(totSpend)} gasto atribuído${semGasto?` · ${semGasto} termo(s) sem gasto sincronizado`:''}</span>
+      <span style="font-size:11px;color:#212121BF;font-weight:400">${fN(totCad)} cadastros reais · ${fR(totSpend)} gasto atribuído${semGasto?` · ${semGasto} keyword(s) sem gasto sincronizado`:''}</span>
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
-        ${sortTh(tableId,'Termo de Busca','keyword','asc','')}
+        ${sortTh(tableId,'Palavra-chave','keyword','asc','')}
         ${sortTh(tableId,'Campanha','campaign_name','asc','')}
         ${sortTh(tableId,'Grupo de Anúncios','ad_group_name','asc','')}
         ${sortTh(tableId,'Cliques','clicks')}
