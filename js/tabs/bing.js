@@ -3,6 +3,17 @@ let _bingFilter = null;
 let _bingCategoryFilter = null;
 let _bingSubTab = 'campanhas';
 let _bingKeywords = null;
+let _bingKwFilter = { campaign: null, adGroup: null };
+
+function renderBingKeywords(filterCampaign, filterAdGroup) {
+  if (filterCampaign !== undefined) { _bingKwFilter.campaign = filterCampaign; _bingKwFilter.adGroup = null; }
+  if (filterAdGroup !== undefined) _bingKwFilter.adGroup = filterAdGroup;
+  const body = document.getElementById('bi-subtab-body');
+  if (!body || !_bingKeywords) return;
+  const all = _bingKeywords.rows;
+  const filtered = filterKeywordRows(all, _bingKwFilter);
+  body.innerHTML = keywordFilterBar(all, _bingKwFilter, 'renderBingKeywords') + renderKeywordTable(filtered, 'bing-keywords', 'Bing Ads');
+}
 
 function bingSubtabBtn(id, label) {
   const active = _bingSubTab === id;
@@ -29,9 +40,10 @@ async function switchBingSubTab(id) {
   if (!_bingKeywords || _bingKeywords.start !== S.start || _bingKeywords.end !== S.end) {
     const rows = await fetchKeywordTableData('bing_ads', S.start, S.end);
     _bingKeywords = { start: S.start, end: S.end, rows };
+    _bingKwFilter = { campaign: null, adGroup: null };
   }
-  registerSortRenderer('bing-keywords', () => { if (_bingSubTab === 'keywords') body.innerHTML = renderKeywordTable(_bingKeywords.rows, 'bing-keywords', 'Bing Ads'); });
-  if (_bingSubTab === 'keywords') body.innerHTML = renderKeywordTable(_bingKeywords.rows, 'bing-keywords', 'Bing Ads');
+  registerSortRenderer('bing-keywords', () => { if (_bingSubTab === 'keywords') renderBingKeywords(); });
+  if (_bingSubTab === 'keywords') renderBingKeywords();
 }
 
 function renderBingCampanhas() {

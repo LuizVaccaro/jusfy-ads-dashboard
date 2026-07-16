@@ -3,6 +3,17 @@ let _googleFilter = null;
 let _googleCategoryFilter = null;
 let _googleSubTab = 'campanhas';
 let _googleKeywords = null;
+let _googleKwFilter = { campaign: null, adGroup: null };
+
+function renderGoogleKeywords(filterCampaign, filterAdGroup) {
+  if (filterCampaign !== undefined) { _googleKwFilter.campaign = filterCampaign; _googleKwFilter.adGroup = null; }
+  if (filterAdGroup !== undefined) _googleKwFilter.adGroup = filterAdGroup;
+  const body = document.getElementById('go-subtab-body');
+  if (!body || !_googleKeywords) return;
+  const all = _googleKeywords.rows;
+  const filtered = filterKeywordRows(all, _googleKwFilter);
+  body.innerHTML = keywordFilterBar(all, _googleKwFilter, 'renderGoogleKeywords') + renderKeywordTable(filtered, 'google-keywords', 'Google Ads');
+}
 
 function googleSubtabBtn(id, label) {
   const active = _googleSubTab === id;
@@ -29,9 +40,10 @@ async function switchGoogleSubTab(id) {
   if (!_googleKeywords || _googleKeywords.start !== S.start || _googleKeywords.end !== S.end) {
     const rows = await fetchKeywordTableData('google_ads', S.start, S.end);
     _googleKeywords = { start: S.start, end: S.end, rows };
+    _googleKwFilter = { campaign: null, adGroup: null };
   }
-  registerSortRenderer('google-keywords', () => { if (_googleSubTab === 'keywords') body.innerHTML = renderKeywordTable(_googleKeywords.rows, 'google-keywords', 'Google Ads'); });
-  if (_googleSubTab === 'keywords') body.innerHTML = renderKeywordTable(_googleKeywords.rows, 'google-keywords', 'Google Ads');
+  registerSortRenderer('google-keywords', () => { if (_googleSubTab === 'keywords') renderGoogleKeywords(); });
+  if (_googleSubTab === 'keywords') renderGoogleKeywords();
 }
 
 function renderGoogleCampanhas() {

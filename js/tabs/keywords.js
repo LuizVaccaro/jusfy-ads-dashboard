@@ -48,6 +48,37 @@ function renderKeywordTable(rows, tableId, platformLabel) {
   </div>`;
 }
 
+// Barra de filtros (Campanha + Conjunto/Grupo de Anúncios) para a sub-aba de palavras-chave.
+// `allRows` é o dataset completo (não filtrado) — usado só pra montar as opções dos selects.
+// `filters` é {campaign, adGroup}. `onChangeFn` é o nome global da função a chamar no onchange
+// (ex: 'renderGoogleKeywords'), que recebe (novaCampanha, novoGrupo) — undefined = não mudou.
+function keywordFilterBar(allRows, filters, onChangeFn) {
+  const campaigns = [...new Set(allRows.map(r => r.campaign_name))].sort();
+  const adGroups  = [...new Set(allRows.filter(r => !filters.campaign || r.campaign_name === filters.campaign).map(r => r.ad_group_name))].sort();
+  return `<div style="margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
+      <select onchange="${onChangeFn}(this.value||null, null)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:260px">
+        <option value="">Todas as Campanhas</option>
+        ${campaigns.map(c => `<option value="${escHtml(c)}" ${filters.campaign===c?'selected':''}>${escHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <label style="font-size:12px;color:#212121BF;white-space:nowrap">Conjunto/Grupo de Anúncios</label>
+      <select onchange="${onChangeFn}(undefined, this.value||null)"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:220px">
+        <option value="">Todos os Conjuntos</option>
+        ${adGroups.map(g => `<option value="${escHtml(g)}" ${filters.adGroup===g?'selected':''}>${escHtml(g)}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+}
+
+function filterKeywordRows(rows, filters) {
+  return rows.filter(r => (!filters.campaign || r.campaign_name === filters.campaign) && (!filters.adGroup || r.ad_group_name === filters.adGroup));
+}
+
 // Busca cadastros reais + gasto já casados no Postgres (get_keyword_performance) para uma
 // plataforma ('google_ads' ou 'bing_ads'). O join (cadastros real x search_term_daily) é feito no
 // banco porque o lado do gasto tem dezenas de milhares de linhas no período — inviável trazer pro
