@@ -38,7 +38,8 @@ async function switchBingSubTab(id) {
 
   body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando palavras-chave…</div>`;
   if (!_bingKeywords || _bingKeywords.start !== S.start || _bingKeywords.end !== S.end) {
-    const rows = await fetchKeywordTableData('bing_ads', S.start, S.end);
+    const aliases = buildKeywordCampaignAliases(_bingData.campaignLookup);
+    const rows = await fetchKeywordTableData('bing_ads', S.start, S.end, aliases);
     _bingKeywords = { start: S.start, end: S.end, rows };
     _bingKwFilter = { campaign: null, adGroup: null };
   }
@@ -185,7 +186,7 @@ async function tabBing() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Bing Ads');
 
-  _bingData = { agg, cmpAgg, cmpMap, hasCmp, chart };
+  _bingData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup };
   _bingFilter = null;
   _bingCategoryFilter = null;
   registerSortRenderer('bing', () => renderBingTable());

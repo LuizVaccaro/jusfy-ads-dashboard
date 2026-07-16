@@ -83,8 +83,8 @@ function filterKeywordRows(rows, filters) {
 // plataforma ('google_ads' ou 'bing_ads'). O join (cadastros real x search_term_daily) é feito no
 // banco porque o lado do gasto tem dezenas de milhares de linhas no período — inviável trazer pro
 // cliente e casar em JS sem estourar o limite de linhas do Supabase.
-async function fetchKeywordTableData(platform, start, end) {
-  const rows = await fetchKeywordPerformance(start, end);
+async function fetchKeywordTableData(platform, start, end, aliases) {
+  const rows = await fetchKeywordPerformance(start, end, aliases);
   return rows.filter(r => r.platform === platform).map(r => {
     const spend = r.spend != null ? +r.spend : null;
     const cadastros = +r.cadastros || 0;

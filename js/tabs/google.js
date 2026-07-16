@@ -38,7 +38,8 @@ async function switchGoogleSubTab(id) {
 
   body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando palavras-chave…</div>`;
   if (!_googleKeywords || _googleKeywords.start !== S.start || _googleKeywords.end !== S.end) {
-    const rows = await fetchKeywordTableData('google_ads', S.start, S.end);
+    const aliases = buildKeywordCampaignAliases(_googleData.campaignLookup);
+    const rows = await fetchKeywordTableData('google_ads', S.start, S.end, aliases);
     _googleKeywords = { start: S.start, end: S.end, rows };
     _googleKwFilter = { campaign: null, adGroup: null };
   }
@@ -186,7 +187,7 @@ async function tabGoogle() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Google Ads');
 
-  _googleData = { agg, cmpAgg, cmpMap, hasCmp, chart };
+  _googleData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup };
   _googleFilter = null;
   _googleCategoryFilter = null;
   registerSortRenderer('google', () => renderGoogleTable());

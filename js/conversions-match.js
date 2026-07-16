@@ -141,6 +141,25 @@ function mergeCreativeRealConversions(ads, realMap) {
   });
 }
 
+// Monta o mapa de aliases pra resolver nomes de campanha legados (JusFinder, DSA, PMax) no nível de
+// keyword — mesmo problema já resolvido no nível de campanha via resolveAdPlatformForUtm, mas aqui
+// precisamos do NOME real da campanha (não só a plataforma), pra casar com search_term_daily. Só
+// resolve quando a keyword bate com exatamente 1 campanha real da plataforma — caso contrário, fica
+// ambíguo e melhor não adivinhar. Consumido por get_keyword_performance (parâmetro p_aliases).
+function buildKeywordCampaignAliases(lookup) {
+  const aliases = {};
+  if (!lookup) return aliases;
+  for (const platformKey of ['google_ads', 'bing_ads']) {
+    const bucket = lookup[platformKey];
+    if (!bucket) continue;
+    for (const legacy of FEATURE_KEYWORDS) {
+      const matches = [...bucket.names].filter(n => n.includes(legacy));
+      if (matches.length === 1) aliases[`${platformKey}||${legacy}`] = matches[0];
+    }
+  }
+  return aliases;
+}
+
 // Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
 // (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
 // ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,
