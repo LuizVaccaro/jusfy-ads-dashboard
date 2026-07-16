@@ -2,10 +2,46 @@
 let _diarioData = null;
 let _diarioChannelFilter = null;
 let _diarioCategoryFilter = null;
-let _diarioWeekdayFilter = null;
+let _diarioWeekdayFilter = new Set(); // vazio = todos os dias
+let _diarioWeekdayDropdownOpen = false;
 
 const WEEKDAY_LABELS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const weekdayOf = dateStr => new Date(dateStr+'T12:00:00').getDay();
+
+function diarioWeekdayLabel() {
+  if (_diarioWeekdayFilter.size === 0) return 'Todos os Dias';
+  if (_diarioWeekdayFilter.size === 7) return 'Todos os Dias';
+  const sorted = [..._diarioWeekdayFilter].sort((a,b)=>a-b);
+  if (sorted.length <= 3) return sorted.map(i => WEEKDAY_LABELS[i]).join(', ');
+  return `${sorted.length} dias selecionados`;
+}
+
+function toggleDiarioWeekdayDropdown() {
+  _diarioWeekdayDropdownOpen = !_diarioWeekdayDropdownOpen;
+  renderDiarioBody();
+  if (_diarioWeekdayDropdownOpen) {
+    // fecha ao clicar fora — listener único, removido ao fechar
+    setTimeout(() => document.addEventListener('click', closeDiarioWeekdayDropdownOutside), 0);
+  }
+}
+
+function closeDiarioWeekdayDropdownOutside(e) {
+  if (e.target.closest('#diarioWeekdayDropdown')) return;
+  _diarioWeekdayDropdownOpen = false;
+  document.removeEventListener('click', closeDiarioWeekdayDropdownOutside);
+  renderDiarioBody();
+}
+
+function toggleDiarioWeekdayDay(idx) {
+  if (_diarioWeekdayFilter.has(idx)) _diarioWeekdayFilter.delete(idx);
+  else _diarioWeekdayFilter.add(idx);
+  renderDiarioBody();
+}
+
+function clearDiarioWeekdayFilter() {
+  _diarioWeekdayFilter = new Set();
+  renderDiarioBody();
+}
 
 // Recalcula os totais (KPIs + rodapé) a partir de um subconjunto de linhas — usado quando o filtro
 // de dia da semana reduz as linhas exibidas, pra manter os totais coerentes com o que está na tabela.
@@ -101,17 +137,16 @@ function buildDiarioView(data, channelFilter, categoryFilter) {
   return { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp: hasCmpBase };
 }
 
-function renderDiarioBody(filterChannel, filterCategory, filterWeekday) {
+function renderDiarioBody(filterChannel, filterCategory) {
   if (filterChannel !== undefined)  _diarioChannelFilter  = filterChannel;
   if (filterCategory !== undefined) _diarioCategoryFilter = filterCategory;
-  if (filterWeekday !== undefined)  _diarioWeekdayFilter  = filterWeekday;
   if (!_diarioData) return;
 
   const view = buildDiarioView(_diarioData, _diarioChannelFilter, _diarioCategoryFilter);
   let { rows, totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotSess, cTotConv, cTotCAC, hasCmp } = view;
 
-  if (_diarioWeekdayFilter !== null && _diarioWeekdayFilter !== '') {
-    rows = rows.filter(r => weekdayOf(r.date) === +_diarioWeekdayFilter);
+  if (_diarioWeekdayFilter.size > 0) {
+    rows = rows.filter(r => _diarioWeekdayFilter.has(weekdayOf(r.date)));
     ({ totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotConv, cTotCAC } = aggregateDiarioRows(rows, hasCmp));
   }
 
@@ -133,20 +168,31 @@ function renderDiarioBody(filterChannel, filterCategory, filterWeekday) {
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <label style="font-size:12px;color:#212121BF;white-space:nowrap">Categoria</label>
-      <select id="diarioCategoryFilter" onchange="renderDiarioBody(undefined, this.value||null, undefined)"
+      <select id="diarioCategoryFilter" onchange="renderDiarioBody(undefined, this.value||null)"
         style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
         <option value="" ${!_diarioCategoryFilter?'selected':''}>Todas as Categorias</option>
         <option value="Non brand" ${_diarioCategoryFilter==='Non brand'?'selected':''}>Non brand</option>
         <option value="Brand Search" ${_diarioCategoryFilter==='Brand Search'?'selected':''}>Brand Search</option>
       </select>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div id="diarioWeekdayDropdown" style="position:relative;display:flex;align-items:center;gap:10px">
       <label style="font-size:12px;color:#212121BF;white-space:nowrap">Dia da Semana</label>
-      <select id="diarioWeekdayFilter" onchange="renderDiarioBody(undefined, undefined, this.value)"
-        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px">
-        <option value="" ${!_diarioWeekdayFilter?'selected':''}>Todos os Dias</option>
-        ${WEEKDAY_LABELS.map((label, idx) => `<option value="${idx}" ${String(_diarioWeekdayFilter)===String(idx)?'selected':''}>${label}</option>`).join('')}
-      </select>
+      <button type="button" onclick="event.stopPropagation();toggleDiarioWeekdayDropdown()"
+        style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:160px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span>${diarioWeekdayLabel()}</span><span style="color:#212121BF;font-size:10px">▾</span>
+      </button>
+      ${_diarioWeekdayDropdownOpen ? `
+        <div onclick="event.stopPropagation()" style="position:absolute;top:100%;left:0;margin-top:4px;background:#ffffff;border:1px solid #E7E8EC;border-radius:8px;padding:8px;z-index:20;min-width:170px;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+          ${WEEKDAY_LABELS.map((label, idx) => `
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 6px;cursor:pointer;font-size:13px;border-radius:4px" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='transparent'">
+              <input type="checkbox" onchange="toggleDiarioWeekdayDay(${idx})" ${_diarioWeekdayFilter.has(idx)?'checked':''} style="cursor:pointer">
+              ${label}
+            </label>`).join('')}
+          <div style="border-top:1px solid #E7E8EC;margin-top:6px;padding-top:6px;text-align:right">
+            <button type="button" onclick="clearDiarioWeekdayFilter()" style="background:none;border:none;color:#02A378;font-size:12px;cursor:pointer;font-weight:600">Limpar</button>
+          </div>
+        </div>
+      ` : ''}
     </div>
   </div>
 
@@ -228,6 +274,8 @@ async function tabDiario() {
   _diarioData = { campsRaw, ga4, cmpCampsRaw, cmpGA4, convDaily, cmpConvDaily, hasCmpBase, campaignLookup };
   _diarioChannelFilter = null;
   _diarioCategoryFilter = null;
+  _diarioWeekdayFilter = new Set();
+  _diarioWeekdayDropdownOpen = false;
   registerSortRenderer('diario', () => renderDiarioBody());
   renderDiarioBody();
 }
