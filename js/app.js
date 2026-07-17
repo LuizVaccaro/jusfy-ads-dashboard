@@ -53,7 +53,7 @@ function applyFilter() {
 
 // ── Tabs ──
 const TABS = [
-  {id:'geral',        label:'📊 Visão Geral'},
+  // {id:'geral',        label:'📊 Visão Geral'}, // oculta a pedido do usuário (17/07/2026) — dados migrando pro Diário
   {id:'diario',       label:'📅 Diário'},
   {id:'aniversario',  label:'🎂 Aniversário'},
   {id:'google',       label:'🔵 Google Ads'},
@@ -64,7 +64,7 @@ const TABS = [
   {id:'sync',         label:'⚙️ Sincronização'},
 ];
 
-let activeTab = 'geral';
+let activeTab = 'diario';
 
 async function renderTab(id) {
   const fns = { geral:tabGeral, diario:tabDiario, aniversario:tabAniversario, google:tabGoogle, meta:tabMeta, bing:tabBing, instagram:tabInstagram, ga4:tabGA4, lp:tabLP, sync:tabSync };
