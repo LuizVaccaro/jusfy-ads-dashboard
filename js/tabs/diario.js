@@ -92,6 +92,66 @@ function sessionsByDate(rows) {
   return m;
 }
 
+// Investimento por plataforma (quadrante inicial, igual Visão Geral) — honra os mesmos filtros da
+// aba (canal/categoria/dia da semana). Se o canal selecionado não é a plataforma, retorna 0 (mantém
+// soma das 3 plataformas == Investimento Total, igual acontece em spendByDate).
+function platformSpendTotal(campRows, platform, channelFilter, categoryFilter, weekdaySet) {
+  const label = platform === 'google_ads' ? 'Google Ads' : platform === 'meta' ? 'Meta Ads' : 'Bing Ads';
+  if (channelFilter && channelFilter !== label) return 0;
+  let s = 0;
+  for (const r of campRows) {
+    if (r.platform !== platform) continue;
+    if (categoryFilter && campaignCategory(r.campaign_name) !== categoryFilter) continue;
+    if (weekdaySet && weekdaySet.size > 0 && !weekdaySet.has(weekdayOf(r.date))) continue;
+    s += +r.spend || 0;
+  }
+  return s;
+}
+
+function clicksImprTotals(campRows, channelFilter, categoryFilter, weekdaySet) {
+  if (channelFilter === 'Orgânico') return { clicks: 0, impr: 0 };
+  let clicks = 0, impr = 0;
+  for (const r of campRows) {
+    if (channelFilter === 'Google Ads' && r.platform !== 'google_ads') continue;
+    if (channelFilter === 'Meta Ads'   && r.platform !== 'meta')       continue;
+    if (channelFilter === 'Bing Ads'   && r.platform !== 'bing_ads')   continue;
+    if (categoryFilter && campaignCategory(r.campaign_name) !== categoryFilter) continue;
+    if (weekdaySet && weekdaySet.size > 0 && !weekdaySet.has(weekdayOf(r.date))) continue;
+    clicks += +r.clicks || 0;
+    impr   += +r.impressions || 0;
+  }
+  return { clicks, impr };
+}
+
+// Série do gráfico diário de conversões — consolidado (investimento total, não separado por
+// plataforma), a partir das linhas já filtradas (canal/categoria/dia da semana) da tabela.
+function buildDiarioChartSeries(rows) {
+  const sorted = [...rows].sort((a, b) => a.date < b.date ? -1 : 1);
+  if (sorted.length <= 45) {
+    return {
+      labels: sorted.map(r => r.date.slice(5).split('-').reverse().join('/')),
+      spend:  sorted.map(r => r.spend),
+      conv:   sorted.map(r => r.conversions),
+      cac:    sorted.map(r => r.cac),
+    };
+  }
+  const mMap = {};
+  for (const r of sorted) {
+    const mon = r.date.slice(0, 7);
+    if (!mMap[mon]) mMap[mon] = { spend: 0, conv: 0 };
+    mMap[mon].spend += r.spend;
+    mMap[mon].conv  += r.conversions;
+  }
+  const months = Object.keys(mMap).sort();
+  const spend = months.map(m => mMap[m].spend);
+  const conv  = months.map(m => mMap[m].conv);
+  return {
+    labels: months.map(mon => new Date(mon + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })),
+    spend, conv,
+    cac: spend.map((s, i) => conv[i] > 0 ? s / conv[i] : null),
+  };
+}
+
 function buildDiarioView(data, channelFilter, categoryFilter) {
   const { campsRaw, convDaily, ga4, cmpCampsRaw, cmpConvDaily, cmpGA4, hasCmpBase, campaignLookup } = data;
 
@@ -150,6 +210,19 @@ function renderDiarioBody(filterChannel, filterCategory) {
     ({ totSpend, totSess, totConv, totCAC, totTX, cTotSpend, cTotConv, cTotCAC } = aggregateDiarioRows(rows, hasCmp));
   }
 
+  const { campsRaw, cmpCampsRaw } = _diarioData;
+  const gSpend  = platformSpendTotal(campsRaw, 'google_ads', _diarioChannelFilter, _diarioCategoryFilter, _diarioWeekdayFilter);
+  const mSpend  = platformSpendTotal(campsRaw, 'meta',       _diarioChannelFilter, _diarioCategoryFilter, _diarioWeekdayFilter);
+  const biSpend = platformSpendTotal(campsRaw, 'bing_ads',   _diarioChannelFilter, _diarioCategoryFilter, _diarioWeekdayFilter);
+  const { clicks: totClicks, impr: totImpr } = clicksImprTotals(campsRaw, _diarioChannelFilter, _diarioCategoryFilter, _diarioWeekdayFilter);
+  const ctr = totImpr > 0 ? totClicks / totImpr * 100 : 0;
+
+  const cGSpend  = hasCmp ? platformSpendTotal(cmpCampsRaw, 'google_ads', _diarioChannelFilter, _diarioCategoryFilter, null) : undefined;
+  const cMSpend  = hasCmp ? platformSpendTotal(cmpCampsRaw, 'meta',       _diarioChannelFilter, _diarioCategoryFilter, null) : undefined;
+  const cBiSpend = hasCmp ? platformSpendTotal(cmpCampsRaw, 'bing_ads',   _diarioChannelFilter, _diarioCategoryFilter, null) : undefined;
+
+  const chartSeries = buildDiarioChartSeries(rows);
+
   const st     = getSort('diario', 'date', 'desc');
   const sorted = sortRows(rows, st.key, st.dir);
 
@@ -196,12 +269,24 @@ function renderDiarioBody(filterChannel, filterCategory) {
     </div>
   </div>
 
-  <div class="kpi-grid cols-5" style="margin-bottom:20px">
+  <div class="kpi-grid cols-4" style="margin-bottom:20px">
     ${kpiCard('Investimento Total', totSpend, cTotSpend, fR, 'c-brand')}
-    ${kpiCard('Sessões (GA4)',      totSess,  cTotSess,  fN, 'c-green')}
-    ${kpiCard('Cadastros',          totConv,  cTotConv,  fN, 'c-blue')}
-    ${kpiCard('TX. Conversão',      totTX,    undefined, fP, 'c-muted')}
-    ${kpiCard('CAC Real',           totCAC,   cTotCAC,   fR, 'c-brand', true)}
+    ${kpiCard('Google Ads',         gSpend,   cGSpend,   fR, 'c-blue')}
+    ${kpiCard('Meta Ads',           mSpend,   cMSpend,   fR, 'c-yellow')}
+    ${kpiCard('Bing Ads',           biSpend,  cBiSpend,  fR, 'c-green')}
+  </div>
+  <div class="kpi-grid cols-4" style="margin-bottom:20px">
+    ${kpiCard('Sessões (GA4)',    totSess, cTotSess, fN, 'c-green')}
+    ${kpiCard('CTR Médio',        ctr,     undefined, fP, 'c-muted')}
+    ${kpiCard('CAC Real',         totCAC,  cTotCAC,  fR, 'c-brand', true)}
+    ${kpiCard('Conversões Totais (Metabase)', totConv, cTotConv, fN, 'c-blue')}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Conversões Diárias (Consolidado)</div>
+    <div style="height:300px;position:relative">
+      ${chartSeries.labels.length===0 ? '<div class="c-muted" style="text-align:center;padding:40px;font-size:13px">Sem dados</div>' : '<canvas id="diarioChart"></canvas>'}
+    </div>
   </div>
 
   <div class="card">
@@ -254,6 +339,13 @@ function renderDiarioBody(filterChannel, filterCategory) {
       </tfoot>
     </table></div>
   </div>`;
+
+  renderComboChart('diarioChart', chartSeries.labels,
+    [{ label:'Investimento', data:chartSeries.spend, backgroundColor:'#02A378' }],
+    [
+      { label:'Cadastros Reais', data:chartSeries.conv, borderColor:'#212121', yAxisID:'y1' },
+      { label:'CAC', data:chartSeries.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+    ]);
 }
 
 async function tabDiario() {

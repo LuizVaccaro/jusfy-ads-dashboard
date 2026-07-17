@@ -1,6 +1,7 @@
 let _metaData = null;
 let _metaSubTab = 'campanhas';
 let _metaCreativos = { topo: null, fundo: null };
+let _metaCreativeFilters = { topo: { campaign: '', adset: '' }, fundo: { campaign: '', adset: '' } };
 
 function metaSubtabBtn(id, label) {
   const active = _metaSubTab === id;
@@ -18,19 +19,60 @@ function renderMetaSubtabs() {
   </div>`;
 }
 
-function renderMetaCreativeSubtab(id, ads) {
-  const tableId = 'meta-' + id;
-  registerSortRenderer(tableId, () => {
-    if (_metaSubTab === id) document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtabHtml(id, ads);
-  });
-  return renderMetaCreativeSubtabHtml(id, ads);
+function metaCreativeSelectStyle() {
+  return 'background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:240px';
 }
 
-function renderMetaCreativeSubtabHtml(id, ads) {
+function renderMetaCreativeFilters(id, rawRows) {
+  const f = _metaCreativeFilters[id];
+  const campaigns = [...new Set(rawRows.map(r => r.campaign_name).filter(Boolean))].sort();
+  const adsetPool = f.campaign ? rawRows.filter(r => r.campaign_name === f.campaign) : rawRows;
+  const adsets = [...new Set(adsetPool.map(r => r.adset_name).filter(Boolean))].sort();
+  return `<div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Campanha</label>
+    <select onchange="setMetaCreativeFilter('${id}','campaign',this.value)" style="${metaCreativeSelectStyle()}">
+      <option value="">Todas as Campanhas</option>
+      ${campaigns.map(c => `<option value="${escHtml(c)}" ${f.campaign === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
+    </select>
+    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Conjunto de Anúncios</label>
+    <select onchange="setMetaCreativeFilter('${id}','adset',this.value)" style="${metaCreativeSelectStyle()}">
+      <option value="">Todos os Conjuntos</option>
+      ${adsets.map(a => `<option value="${escHtml(a)}" ${f.adset === a ? 'selected' : ''}>${escHtml(a)}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function metaCreativeFilteredAds(id, rawRows, realMap) {
+  const f = _metaCreativeFilters[id];
+  let rows = rawRows;
+  if (f.campaign) rows = rows.filter(r => r.campaign_name === f.campaign);
+  if (f.adset) rows = rows.filter(r => r.adset_name === f.adset);
+  return mergeCreativeRealConversions(aggMetaByAd(rows), realMap);
+}
+
+function renderMetaCreativeSubtab(id, rawRows, realMap) {
   const tableId = 'meta-' + id;
-  return id === 'topo'
+  registerSortRenderer(tableId, () => {
+    if (_metaSubTab === id) document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtabHtml(id, rawRows, realMap);
+  });
+  return renderMetaCreativeSubtabHtml(id, rawRows, realMap);
+}
+
+function renderMetaCreativeSubtabHtml(id, rawRows, realMap) {
+  const tableId = 'meta-' + id;
+  const ads = metaCreativeFilteredAds(id, rawRows, realMap);
+  const table = id === 'topo'
     ? metaTable(ads, '🟡 Meta · Criativos Topo (Branding)', null, tableId)
     : metaFundoTable(ads, '🟡 Meta · Criativos Fundo (Conversão)', null, tableId);
+  return renderMetaCreativeFilters(id, rawRows) + table;
+}
+
+function setMetaCreativeFilter(id, key, value) {
+  _metaCreativeFilters[id][key] = value;
+  if (key === 'campaign') _metaCreativeFilters[id].adset = '';
+  const cached = _metaCreativos[id];
+  if (!cached) return;
+  document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtab(id, cached.rawRows, cached.realMap);
 }
 
 async function switchMetaSubTab(id) {
@@ -41,20 +83,21 @@ async function switchMetaSubTab(id) {
 
   body.innerHTML = `<div class="loading"><div class="spinner"></div>Carregando criativos…</div>`;
   const cached = _metaCreativos[id];
-  let ads;
+  let rawRows, realMap;
   if (cached && cached.start === S.start && cached.end === S.end) {
-    ads = cached.ads;
+    ({ rawRows, realMap } = cached);
   } else {
     const [rows, realRows] = await Promise.all([
       supa(`meta_creatives?select=*&date=gte.${S.start}&date=lte.${S.end}&campaign_name=ilike.*${id}*&order=date.asc`),
       fetchCreativeRealConversions(S.start, S.end),
     ]);
-    const realMap = buildCreativeConversionsMap(realRows);
-    ads = mergeCreativeRealConversions(aggMetaByAd(rows), realMap);
-    _metaCreativos[id] = { start: S.start, end: S.end, ads };
+    realMap = buildCreativeConversionsMap(realRows);
+    rawRows = rows;
+    _metaCreativeFilters[id] = { campaign: '', adset: '' };
+    _metaCreativos[id] = { start: S.start, end: S.end, rawRows, realMap };
   }
 
-  const html = renderMetaCreativeSubtab(id, ads);
+  const html = renderMetaCreativeSubtab(id, rawRows, realMap);
   if (_metaSubTab === id) body.innerHTML = html;
 }
 
@@ -152,6 +195,7 @@ async function tabMeta() {
   ensureCreativeModal();
   _metaSubTab = 'campanhas';
   _metaCreativos = { topo: null, fundo: null };
+  _metaCreativeFilters = { topo: { campaign: '', adset: '' }, fundo: { campaign: '', adset: '' } };
 
   const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
