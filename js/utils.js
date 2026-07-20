@@ -243,6 +243,79 @@ function kpiCard(label, val, cmpVal, fFn=fR, cls='c-brand', invert=false) {
   </div>`;
 }
 
+// ── Dropdown multi-seleção (checkboxes) genérico — filtros de campanha/conjunto/canal etc.
+// Estado global por "key" (ex: 'metaCampFilter'). selected vazio = sem filtro (mostra tudo).
+function escAttr(s) {
+  return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+const _ms = {};
+
+function msState(key) {
+  if (!_ms[key]) _ms[key] = { open: false, selected: new Set() };
+  return _ms[key];
+}
+
+function msReset(key) {
+  _ms[key] = { open: false, selected: new Set() };
+}
+
+function msToggleOpen(key, onChange) {
+  const st = msState(key);
+  st.open = !st.open;
+  onChange();
+  if (st.open) {
+    setTimeout(() => document.addEventListener('click', function outside(e) {
+      if (e.target.closest(`[data-ms-key="${key}"]`)) return;
+      st.open = false;
+      document.removeEventListener('click', outside);
+      onChange();
+    }), 0);
+  }
+}
+
+function msToggleOption(key, value, onChange) {
+  const st = msState(key);
+  if (st.selected.has(value)) st.selected.delete(value); else st.selected.add(value);
+  onChange();
+}
+
+function msClear(key, onChange) {
+  msState(key).selected.clear();
+  onChange();
+}
+
+function msLabel(key, allLabel) {
+  const sel = [...msState(key).selected];
+  if (sel.length === 0) return allLabel;
+  if (sel.length <= 2) return sel.join(', ');
+  return `${sel.length} selecionadas`;
+}
+
+// changeFn: nome (string) de uma função global sem args, chamada após abrir/marcar/limpar — re-renderiza a tela.
+function renderMultiSelect(key, label, allLabel, options, changeFn, minWidth = 240) {
+  const st = msState(key);
+  return `<div data-ms-key="${key}" style="position:relative;display:flex;align-items:center;gap:10px">
+    <label style="font-size:12px;color:#212121BF;white-space:nowrap">${label}</label>
+    <button type="button" onclick="event.stopPropagation();msToggleOpen('${key}',${changeFn})"
+      style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:${minWidth}px;max-width:360px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(msLabel(key, allLabel))}</span><span style="color:#212121BF;font-size:10px;flex-shrink:0">▾</span>
+    </button>
+    ${st.open ? `
+      <div onclick="event.stopPropagation()" style="position:absolute;top:100%;left:0;margin-top:4px;background:#ffffff;border:1px solid #E7E8EC;border-radius:8px;padding:8px;z-index:20;min-width:${minWidth}px;max-width:420px;max-height:320px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+        ${options.map(opt => `
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 6px;cursor:pointer;font-size:13px;border-radius:4px;word-break:break-word" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='transparent'">
+            <input type="checkbox" onchange="msToggleOption('${key}','${escAttr(opt)}',${changeFn})" ${st.selected.has(opt) ? 'checked' : ''} style="cursor:pointer;flex-shrink:0">
+            <span>${escHtml(opt)}</span>
+          </label>`).join('')}
+        <div style="border-top:1px solid #E7E8EC;margin-top:6px;padding-top:6px;text-align:right">
+          <button type="button" onclick="msClear('${key}',${changeFn})" style="background:none;border:none;color:#02A378;font-size:12px;cursor:pointer;font-weight:600">Limpar</button>
+        </div>
+      </div>
+    ` : ''}
+  </div>`;
+}
+
 function loading() {
   document.getElementById('content').innerHTML = `<div class="loading"><div class="spinner"></div>Carregando dados…</div>`;
 }

@@ -1,7 +1,6 @@
 let _metaData = null;
 let _metaSubTab = 'campanhas';
 let _metaCreativos = { topo: null, fundo: null };
-let _metaCreativeFilters = { topo: { campaign: '', adset: '' }, fundo: { campaign: '', adset: '' } };
 
 function metaSubtabBtn(id, label) {
   const active = _metaSubTab === id;
@@ -19,34 +18,43 @@ function renderMetaSubtabs() {
   </div>`;
 }
 
-function metaCreativeSelectStyle() {
-  return 'background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:240px';
+// changeFn precisa ser um nome de função global sem argumentos (embutido cru no onclick do
+// dropdown) — daí os dois wrappers fixos por sub-aba em vez de uma closure parametrizada por id.
+function metaCreativeFilterChangedFundo() { metaCreativeFilterChanged('fundo'); }
+function metaCreativeFilterChangedTopo()  { metaCreativeFilterChanged('topo'); }
+
+function metaCreativeFilterChanged(id) {
+  const cached = _metaCreativos[id];
+  if (!cached) return;
+  document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtab(id, cached.rawRows, cached.realMap);
 }
 
 function renderMetaCreativeFilters(id, rawRows) {
-  const f = _metaCreativeFilters[id];
+  const campKey  = 'metaCreativeCamp_' + id;
+  const adsetKey = 'metaCreativeAdset_' + id;
+  const changeFn = id === 'topo' ? 'metaCreativeFilterChangedTopo' : 'metaCreativeFilterChangedFundo';
+
+  const selectedCamps = msState(campKey).selected;
   const campaigns = [...new Set(rawRows.map(r => r.campaign_name).filter(Boolean))].sort();
-  const adsetPool = f.campaign ? rawRows.filter(r => r.campaign_name === f.campaign) : rawRows;
+  const adsetPool = selectedCamps.size ? rawRows.filter(r => selectedCamps.has(r.campaign_name)) : rawRows;
   const adsets = [...new Set(adsetPool.map(r => r.adset_name).filter(Boolean))].sort();
+
+  // Poda seleções de conjunto que saíram da lista (ex: usuário restringiu a campanha depois)
+  const selectedAdsets = msState(adsetKey).selected;
+  [...selectedAdsets].forEach(a => { if (!adsets.includes(a)) selectedAdsets.delete(a); });
+
   return `<div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Campanha</label>
-    <select onchange="setMetaCreativeFilter('${id}','campaign',this.value)" style="${metaCreativeSelectStyle()}">
-      <option value="">Todas as Campanhas</option>
-      ${campaigns.map(c => `<option value="${escHtml(c)}" ${f.campaign === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
-    </select>
-    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Conjunto de Anúncios</label>
-    <select onchange="setMetaCreativeFilter('${id}','adset',this.value)" style="${metaCreativeSelectStyle()}">
-      <option value="">Todos os Conjuntos</option>
-      ${adsets.map(a => `<option value="${escHtml(a)}" ${f.adset === a ? 'selected' : ''}>${escHtml(a)}</option>`).join('')}
-    </select>
+    ${renderMultiSelect(campKey, 'Campanha', 'Todas as Campanhas', campaigns, changeFn, 240)}
+    ${renderMultiSelect(adsetKey, 'Conjunto de Anúncios', 'Todos os Conjuntos', adsets, changeFn, 240)}
   </div>`;
 }
 
 function metaCreativeFilteredAds(id, rawRows, realMap) {
-  const f = _metaCreativeFilters[id];
+  const selectedCamps  = msState('metaCreativeCamp_' + id).selected;
+  const selectedAdsets = msState('metaCreativeAdset_' + id).selected;
   let rows = rawRows;
-  if (f.campaign) rows = rows.filter(r => r.campaign_name === f.campaign);
-  if (f.adset) rows = rows.filter(r => r.adset_name === f.adset);
+  if (selectedCamps.size)  rows = rows.filter(r => selectedCamps.has(r.campaign_name));
+  if (selectedAdsets.size) rows = rows.filter(r => selectedAdsets.has(r.adset_name));
   return mergeCreativeRealConversions(aggMetaByAd(rows), realMap);
 }
 
@@ -67,14 +75,6 @@ function renderMetaCreativeSubtabHtml(id, rawRows, realMap) {
   return renderMetaCreativeFilters(id, rawRows) + table;
 }
 
-function setMetaCreativeFilter(id, key, value) {
-  _metaCreativeFilters[id][key] = value;
-  if (key === 'campaign') _metaCreativeFilters[id].adset = '';
-  const cached = _metaCreativos[id];
-  if (!cached) return;
-  document.getElementById('m-subtab-body').innerHTML = renderMetaCreativeSubtab(id, cached.rawRows, cached.realMap);
-}
-
 async function switchMetaSubTab(id) {
   _metaSubTab = id;
   document.getElementById('m-subtabs').innerHTML = renderMetaSubtabs();
@@ -93,7 +93,8 @@ async function switchMetaSubTab(id) {
     ]);
     realMap = buildCreativeConversionsMap(realRows);
     rawRows = rows;
-    _metaCreativeFilters[id] = { campaign: '', adset: '' };
+    msReset('metaCreativeCamp_' + id);
+    msReset('metaCreativeAdset_' + id);
     _metaCreativos[id] = { start: S.start, end: S.end, rawRows, realMap };
   }
 
@@ -101,21 +102,24 @@ async function switchMetaSubTab(id) {
   if (_metaSubTab === id) body.innerHTML = html;
 }
 
+function renderMetaCampanhasFilterChange() {
+  const { agg } = _metaData;
+  const camps = [...new Set(agg.map(r => r.campaign_name))].sort();
+  document.getElementById('m-campfilter').innerHTML =
+    renderMultiSelect('metaCampFilter', 'Filtrar Campanha', 'Todas as Campanhas', camps, 'renderMetaCampanhasFilterChange', 280);
+  renderMetaTable();
+}
+
 function renderMetaCampanhas() {
   if (!_metaData) return;
   const { agg, dailyChart } = _metaData;
-  const camps = agg.map(r => r.campaign_name);
-  _metaFilter = null;
+  const camps = [...new Set(agg.map(r => r.campaign_name))].sort();
+  msReset('metaCampFilter');
   registerSortRenderer('meta', () => renderMetaTable());
 
   document.getElementById('m-subtab-body').innerHTML = `
-  <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px">
-    <label style="font-size:12px;color:#212121BF;white-space:nowrap">Filtrar Campanha</label>
-    <select id="metaCampFilter" onchange="renderMetaTable(this.value||null)"
-      style="background:#ffffff;border:1px solid #E7E8EC;color:#212121;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:280px">
-      <option value="">Todas as Campanhas</option>
-      ${camps.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
-    </select>
+  <div id="m-campfilter" style="margin-bottom:16px">
+    ${renderMultiSelect('metaCampFilter', 'Filtrar Campanha', 'Todas as Campanhas', camps, 'renderMetaCampanhasFilterChange', 280)}
   </div>
   <div class="kpi-grid cols-4" id="m-kpis" style="margin-bottom:20px"></div>
   <div class="card" style="margin-bottom:16px">
@@ -132,22 +136,19 @@ function renderMetaCampanhas() {
     </table></div>
   </div>`;
 
-  renderMetaTable(null);
+  renderMetaTable();
   renderComboChart('metaChart', dailyChart.labels, [{ label:'Meta Ads', data:dailyChart.spend, backgroundColor:'#017858' }], [
     { label:'Cadastros Reais', data:dailyChart.conv, borderColor:'#41C78F', yAxisID:'y1' },
     { label:'CAC', data:dailyChart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
   ]);
 }
 
-let _metaFilter = null;
-
-function renderMetaTable(filterCamp) {
-  if (filterCamp !== undefined) _metaFilter = filterCamp;
+function renderMetaTable() {
   if (!_metaData) return;
   const { agg, cmpAgg, cmpMap, hasCmp } = _metaData;
-  const filterVal   = _metaFilter;
-  const filtered0   = filterVal ? agg.filter(r => r.campaign_name === filterVal) : agg;
-  const cmpFiltered = filterVal ? cmpAgg.filter(r => r.campaign_name === filterVal) : cmpAgg;
+  const selected    = msState('metaCampFilter').selected;
+  const filtered0   = selected.size ? agg.filter(r => selected.has(r.campaign_name)) : agg;
+  const cmpFiltered = selected.size ? cmpAgg.filter(r => selected.has(r.campaign_name)) : cmpAgg;
 
   const st = getSort('meta', 'spend', 'desc');
   const filtered = sortRows(filtered0, st.key, st.dir);
@@ -195,7 +196,8 @@ async function tabMeta() {
   ensureCreativeModal();
   _metaSubTab = 'campanhas';
   _metaCreativos = { topo: null, fundo: null };
-  _metaCreativeFilters = { topo: { campaign: '', adset: '' }, fundo: { campaign: '', adset: '' } };
+  msReset('metaCreativeCamp_fundo'); msReset('metaCreativeAdset_fundo');
+  msReset('metaCreativeCamp_topo');  msReset('metaCreativeAdset_topo');
 
   const [campAgg, cmpCampAgg, ga4Camp, cmpGA4Camp, convRows, cmpConvRows, dailyByPlatform, convDaily, campsRaw] = await Promise.all([
     fetchCampAgg(S.start, S.end),
