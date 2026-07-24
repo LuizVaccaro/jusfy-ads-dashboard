@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório Diário de Aquisição — Jusfy | 23/07/2026</title>
+<style>
+:root{
+  --bg:#FAFAFA;--white:#FFFFFF;--text:#212121;
+  --green:#02A378;--gl:#e6f7f2;
+  --amber:#B38B00;--al:#fff9e6;
+  --red:#e05a69;--rl:#fbeaec;
+  --blue:#0182ab;--bl:#e6f3f7;
+  --meta:#ed723e;--bing:#9551FB;
+  --gray:#5E5E60;--border:#E7E8EC;--borderl:#CECED2;
+  --track:#F4F5F9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5}
+.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+.container{max-width:880px;margin:0 auto;padding:24px 16px 48px}
+.header{background:var(--green);color:#fff;padding:20px 28px;border-radius:12px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.header .title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.header .sub{font-size:12px;opacity:.85;margin-top:2px}
+.badge{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px}
+.sl{font-size:14px;font-weight:700;color:var(--text);margin:28px 0 12px;padding-left:12px;position:relative}
+.sl::before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:3px;background:var(--green);border-radius:2px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.kpi{background:var(--white);padding:14px 14px}
+.kpi .label{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kpi .val{font-size:19px;font-weight:700}
+.kpi .sub{font-size:10px;color:var(--gray);margin-top:2px}
+.kpi .chg{font-size:11px;font-weight:600;margin-top:3px}
+.tu{color:var(--green)}.td{color:var(--red)}.ta{color:var(--amber)}
+.tw{overflow-x:auto;margin-bottom:8px;border-radius:8px}
+table{width:100%;border-collapse:collapse;background:var(--white);border-radius:8px;overflow:hidden;border:1px solid var(--border);min-width:520px}
+th{background:var(--track);font-size:10px;font-weight:600;color:var(--gray);text-transform:uppercase;padding:8px 12px;text-align:right;letter-spacing:.4px}
+th:first-child{text-align:left}
+td{padding:7px 12px;text-align:right;border-top:1px solid var(--border);font-size:12px}
+td:first-child{text-align:left;font-weight:500}
+tr.rup td{background:var(--gl)}
+tr.rdn td{background:var(--rl)}
+tr.tot td{background:var(--track);font-weight:700;border-top:2px solid var(--borderl)}
+.insight{padding:10px 14px;border-radius:8px;margin-bottom:8px;border-left:3px solid;font-size:12.5px}
+.insight.green{background:var(--gl);border-color:var(--green)}
+.insight.amber{background:var(--al);border-color:var(--amber)}
+.insight.red{background:var(--rl);border-color:var(--red)}
+.insight strong{font-weight:600;display:block;margin-bottom:2px}
+.cb{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:8px}
+.cb h4{font-size:12px;font-weight:600;color:var(--gray);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.fn{font-size:9.5px;color:var(--gray);border-top:1px dashed var(--border);padding-top:6px;margin-top:20px}
+@media(max-width:640px){ .kpi-grid{grid-template-columns:1fr 1fr} }
+
+.hbar-row{display:grid;grid-template-columns:150px 1fr 70px;align-items:center;gap:10px;padding:6px 0}
+.hbar-track{height:20px;background:var(--track);border-radius:5px;overflow:hidden}
+.hbar-fill{height:100%;border-radius:5px}
+.hbar-row .lbl{font-size:12px;font-weight:500}
+.hbar-row .num{font-size:12px;font-weight:700;text-align:right}
+
+.vbars{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:8px}
+.vbar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:6px}
+.vbar-val{font-size:11px;font-weight:700}
+.vbar{width:100%;max-width:38px;border-radius:5px 5px 2px 2px}
+.vbar-lbl{font-size:9.5px;color:var(--gray);text-align:center;line-height:1.3}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <div>
+    <div class="title">Jusfy · Relatório Diário de Aquisição</div>
+    <div class="sub">Quinta-feira, 23 de julho de 2026 · comparado a ontem (22/07)</div>
+  </div>
+  <div class="badge mono">23/07/2026</div>
+</div>
+
+<div class="sl">Números do dia</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="label">Investimento</div>
+    <div class="val mono">R$75,0k</div>
+    <div class="sub">Google + Meta + Bing</div>
+    <div class="chg tu">▼ −1,8% vs. ontem</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Cadastros</div>
+    <div class="val mono">363</div>
+    <div class="sub">todos os canais</div>
+    <div class="chg td">▼ −21,1% vs. ontem</div>
+  </div>
+  <div class="kpi">
+    <div class="label">CAC</div>
+    <div class="val mono">R$207</div>
+    <div class="sub">invest. ÷ cadastros</div>
+    <div class="chg td">▲ +24,5% vs. ontem</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Sessões (site)</div>
+    <div class="val mono">69.530</div>
+    <div class="sub">GA4 · todas as fontes</div>
+    <div class="chg tu">▲ +14,4% vs. ontem</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Conversão</div>
+    <div class="val mono">0,52%</div>
+    <div class="sub">sessão → cadastro</div>
+    <div class="chg td">▼ vs 0,76% ontem</div>
+  </div>
+</div>
+
+<div class="sl">Números do mês (01–23/07)</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="label">Investimento</div>
+    <div class="val mono">R$1,41M</div>
+    <div class="sub">acumulado jul (01–23)</div>
+    <div class="chg tu">▼ −0,7% vs. jun (01–23)</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Cadastros</div>
+    <div class="val mono">6.666</div>
+    <div class="sub">acumulado jul (01–23)</div>
+    <div class="chg tu">▲ +2,3% vs. jun (01–23)</div>
+  </div>
+  <div class="kpi">
+    <div class="label">CAC</div>
+    <div class="val mono">R$212</div>
+    <div class="sub">invest. ÷ cadastros</div>
+    <div class="chg tu">▼ −2,9% vs. jun (01–23)</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Sessões (site)</div>
+    <div class="val mono">1.124.852</div>
+    <div class="sub">GA4 · acumulado jul</div>
+    <div class="chg tu">▲ +7,3% vs. jun (01–23)</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Conversão</div>
+    <div class="val mono">0,59%</div>
+    <div class="sub">sessão → cadastro</div>
+    <div class="chg td">▼ vs 0,62% jun (01–23)</div>
+  </div>
+</div>
+
+<div class="sl">Destaques do dia</div>
+<div class="insight green"><strong>✅ Cadastro orgânico volta a crescer</strong>Depois da queda de 35% diagnosticada na semana passada, o Orgânico subiu 33% nesta quinta vs. a mesma quinta anterior (122 vs. 92 cadastros) — a maior recuperação da semana.</div>
+<div class="insight red"><strong>🔴 Cadastros 21% abaixo de ontem</strong>363 hoje vs. 460 ontem. Ontem foi um dia bem forte (o maior da semana), então parte da queda é reversão ao normal — mas vale acompanhar se o Google mantém o ritmo (294→196 conversões reportadas de plataforma no período).</div>
+<div class="insight amber"><strong>⚠ Meta com CAC 5x acima do Google</strong>Meta gastou R$24.061 e trouxe 20 cadastros — CAC de R$1.203, contra R$240 do Google no mesmo dia.</div>
+
+<div class="sl">Cadastros por canal</div>
+<div class="cb">
+  <div class="hbar-row">
+    <span class="lbl">Google Ads</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--green)"></div></div>
+    <span class="num mono">199</span>
+  </div>
+  <div class="hbar-row">
+    <span class="lbl">Orgânico</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:62.8%;background:var(--blue)"></div></div>
+    <span class="num mono">125</span>
+  </div>
+  <div class="hbar-row">
+    <span class="lbl">Meta Ads</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:10.1%;background:var(--meta)"></div></div>
+    <span class="num mono">20</span>
+  </div>
+  <div class="hbar-row">
+    <span class="lbl">Bing Ads</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:8%;background:var(--bing)"></div></div>
+    <span class="num mono">16</span>
+  </div>
+  <div class="hbar-row">
+    <span class="lbl">Afiliados</span>
+    <div class="hbar-track"><div class="hbar-fill" style="width:1.5%;background:var(--gray)"></div></div>
+    <span class="num mono">3</span>
+  </div>
+</div>
+<div class="tw">
+<table>
+<thead><tr>
+  <th style="text-align:left">Canal</th><th>Cadastros</th><th>Gasto</th><th>CAC</th><th>% do total</th>
+</tr></thead>
+<tbody>
+<tr class="rup"><td>Google Ads</td><td class="mono">199</td><td class="mono">R$47.731</td><td class="mono">R$240</td><td class="mono">54,8%</td></tr>
+<tr><td>Orgânico (direto, busca, OAB)</td><td class="mono">125</td><td class="mono">—</td><td class="mono">—</td><td class="mono">34,4%</td></tr>
+<tr class="rdn"><td>Meta Ads</td><td class="mono">20</td><td class="mono">R$24.061</td><td class="mono">R$1.203</td><td class="mono">5,5%</td></tr>
+<tr><td>Bing Ads</td><td class="mono">16</td><td class="mono">R$3.180</td><td class="mono">R$199</td><td class="mono">4,4%</td></tr>
+<tr><td>Afiliados</td><td class="mono">3</td><td class="mono">—</td><td class="mono">—</td><td class="mono">0,8%</td></tr>
+<tr class="tot"><td>TOTAL</td><td class="mono">363</td><td class="mono">R$74.971</td><td class="mono">R$207</td><td class="mono">100%</td></tr>
+</tbody>
+</table>
+<div class="fn">Orgânico e Afiliados não têm gasto de mídia associado — cadastro "de graça" do ponto de vista de ads.</div>
+</div>
+
+<div class="sl">Cadastros por categoria</div>
+<div class="tw">
+<table>
+<thead><tr>
+  <th style="text-align:left">Categoria</th><th>Cadastros</th><th>% do total</th><th>Δ WoW (16/07)</th>
+</tr></thead>
+<tbody>
+<tr class="rdn"><td>Non brand</td><td class="mono">153</td><td class="mono">42,1%</td><td class="mono td">−12,1%</td></tr>
+<tr class="rup"><td>Orgânico</td><td class="mono">122</td><td class="mono">33,6%</td><td class="mono tu">+32,6%</td></tr>
+<tr class="rup"><td>Brand Search</td><td class="mono">84</td><td class="mono">23,1%</td><td class="mono tu">+16,7%</td></tr>
+<tr><td>Afiliados</td><td class="mono">3</td><td class="mono">0,8%</td><td class="mono">0,0%</td></tr>
+<tr><td>ChatGPT</td><td class="mono">1</td><td class="mono">0,3%</td><td class="mono">novo</td></tr>
+<tr class="tot"><td>TOTAL</td><td class="mono">363</td><td class="mono">100%</td><td class="mono tu">+6,5%</td></tr>
+</tbody>
+</table>
+<div class="fn">WoW = comparado à mesma quinta-feira da semana anterior (16/07/2026). Non brand e Brand Search somam todas as plataformas pagas (Google + Meta + Bing) — a categoria não separa por canal.</div>
+</div>
+
+<div class="sl">Últimos 7 dias</div>
+<div class="cb">
+  <h4>Cadastros por dia (17–23/07)</h4>
+  <div class="vbars">
+    <div class="vbar-col">
+      <span class="vbar-val mono">253</span>
+      <div class="vbar" style="height:55%;background:var(--green)"></div>
+      <span class="vbar-lbl">17/07<br>sex</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">111</span>
+      <div class="vbar" style="height:24.1%;background:var(--gray)"></div>
+      <span class="vbar-lbl">18/07<br>sáb</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">87</span>
+      <div class="vbar" style="height:18.9%;background:var(--gray)"></div>
+      <span class="vbar-lbl">19/07<br>dom</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">334</span>
+      <div class="vbar" style="height:72.6%;background:var(--green)"></div>
+      <span class="vbar-lbl">20/07<br>seg</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">423</span>
+      <div class="vbar" style="height:92%;background:var(--green)"></div>
+      <span class="vbar-lbl">21/07<br>ter</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">460</span>
+      <div class="vbar" style="height:100%;background:var(--green)"></div>
+      <span class="vbar-lbl">22/07<br>qua</span>
+    </div>
+    <div class="vbar-col">
+      <span class="vbar-val mono">363</span>
+      <div class="vbar" style="height:78.9%;background:var(--blue)"></div>
+      <span class="vbar-lbl">23/07<br>qui</span>
+    </div>
+  </div>
+</div>
+
+<div class="sl">Melhor campanha por plataforma</div>
+<div class="tw">
+<table>
+<thead><tr>
+  <th style="text-align:left">Plataforma</th><th style="text-align:left">Campanha</th><th>Cadastros</th><th>Gasto</th><th>CAC</th>
+</tr></thead>
+<tbody>
+<tr class="rup"><td>Google Ads</td><td>Non-brand — JusFinder</td><td class="mono">36</td><td class="mono">R$15.127</td><td class="mono">R$420</td></tr>
+<tr class="rdn"><td>Meta Ads</td><td>Fundo — OAB/SP</td><td class="mono">12</td><td class="mono">R$9.841</td><td class="mono">R$820</td></tr>
+<tr><td>Bing Ads</td><td>Non-brand — JusGPT</td><td class="mono">6</td><td class="mono">R$1.620</td><td class="mono">R$270</td></tr>
+</tbody>
+</table>
+<div class="fn">Melhor = maior número de cadastros reais no dia, dentro de cada plataforma. Google e Bing consideram apenas campanhas non-brand (Brand Search fica de fora dessa comparação).</div>
+</div>
+
+<div class="fn" style="margin-top:24px">Relatório Diário de Aquisição · Jusfy · 23/07/2026 · Fontes: Supabase (GA4, campanhas, cadastros reais via Metabase) · Gerado em 24/07/2026 · Cadastros do dia anterior podem sofrer pequeno ajuste no próximo import do Metabase.</div>
+
+</div>
+</body>
+</html>
