@@ -9,4 +9,5 @@ if ($status) {
   git commit -m $msg
 }
 git push
-Write-Host "✅ Código enviado para o GitHub. Para publicar no Netlify, rode: .\publish.ps1" -ForegroundColor Green
+git push pages master:master
+Write-Host "✅ Código enviado para o GitHub e publicado no GitHub Pages (https://luizvaccaro-dev.github.io/jusfy-ads-dashboard-pages/)." -ForegroundColor Green
