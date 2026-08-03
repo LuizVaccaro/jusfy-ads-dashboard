@@ -99,6 +99,9 @@ async function fetchInstagramMediaAgg(s, e)        { return supaRpc('get_instagr
 async function fetchInstagramAccountDailyAgg(s, e) { return supaRpc('get_instagram_account_daily_agg', { p_start: s, p_end: e }); }
 async function fetchCreativeRealConversions(s, e)  { return supaRpc('get_creative_real_conversions',   { p_start: s, p_end: e }); }
 async function fetchKeywordPerformance(s, e, aliases) { return supaRpc('get_keyword_performance', { p_start: s, p_end: e, p_aliases: aliases || {} }); }
+async function fetchGscTotals(s, e)            { const r = await supaRpc('get_gsc_totals', { p_start: s, p_end: e }); return r[0] || {}; }
+async function fetchGscDailyAgg(s, e)          { return supaRpc('get_gsc_daily_agg', { p_start: s, p_end: e }); }
+async function fetchGscTopQueries(s, e, limit=30, brandOnly=true) { return supaRpc('get_gsc_top_queries', { p_start: s, p_end: e, p_limit: limit, p_brand_only: brandOnly }); }
 
 // ── Match de conversões reais (Metabase) — ver js/conversions-match.js ──
 
