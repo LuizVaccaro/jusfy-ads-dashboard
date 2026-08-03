@@ -10,7 +10,8 @@ function authBearer() {
 
 async function supa(path) {
   const r = await fetch(`${SURL}/rest/v1/${path}`, {
-    headers: { apikey: SKEY, Authorization: `Bearer ${authBearer()}`, Range: '0-49999' }
+    headers: { apikey: SKEY, Authorization: `Bearer ${authBearer()}`, Range: '0-49999' },
+    cache: 'no-store', // respostas variam por sessão logada — não deixar o navegador cachear por URL
   });
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
   return r.json();
@@ -20,7 +21,8 @@ async function supaRpc(fn, params) {
   const r = await fetch(`${SURL}/rest/v1/rpc/${fn}`, {
     method: 'POST',
     headers: { apikey: SKEY, Authorization: `Bearer ${authBearer()}`, 'Content-Type': 'application/json', Range: '0-49999' },
-    body: JSON.stringify(params)
+    body: JSON.stringify(params),
+    cache: 'no-store',
   });
   if (!r.ok) throw new Error(`Supabase RPC ${fn} ${r.status}: ${await r.text()}`);
   return r.json();

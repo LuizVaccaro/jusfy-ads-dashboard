@@ -184,7 +184,5 @@ footer{text-align:center;padding:24px;font-size:11px;color:var(--jf-muted-dark);
 .auth-input:focus{border-color:var(--jf-green)}
 .auth-code{letter-spacing:.4em;font-family:'Poppins',sans-serif;font-weight:700;font-size:18px}
 .auth-btn{width:100%;margin-top:12px;height:44px}
-.auth-google-btn{background:#4285F4;display:flex;align-items:center;justify-content:center}
-.auth-google-btn:hover{background:#3367D6}
 .auth-link{display:block;width:100%;margin-top:12px;background:none;border:none;color:var(--jf-muted-dark);font-size:12px;cursor:pointer;text-decoration:underline}
 .auth-link:hover{color:var(--jf-ink)}
