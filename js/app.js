@@ -133,4 +133,12 @@ function init() {
   checkMetaToken();
 }
 
-init();
+// Chamado por js/auth.js depois de confirmar a sessão (login por código @jusfy.com.br)
+function startDashboard() {
+  const s = getSession();
+  if (s && s.email) {
+    const el = document.getElementById('headerUser');
+    if (el) el.textContent = s.email;
+  }
+  init();
+}

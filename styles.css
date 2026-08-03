@@ -171,3 +171,18 @@ tr:hover td{background:#FAFAFA}
 
 /* ── Footer ── */
 footer{text-align:center;padding:24px;font-size:11px;color:var(--jf-muted-dark);border-top:1px solid var(--jf-border);margin-top:40px}
+
+/* ── Login gate (acesso restrito @jusfy.com.br) ── */
+.auth-gate{position:fixed;inset:0;z-index:1000;background:var(--jf-bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-card{width:100%;max-width:360px;background:var(--jf-white);border:1px solid var(--jf-border);border-radius:14px;padding:32px 28px;box-shadow:0 4px 24px rgba(1,40,28,.08);text-align:center}
+.auth-logo{font-family:'Poppins',sans-serif;font-weight:800;font-size:22px;color:var(--jf-green);letter-spacing:-0.5px;margin-bottom:18px}
+.auth-logo span{color:var(--jf-ink);font-weight:400}
+.auth-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:17px;color:var(--jf-ink);margin-bottom:6px}
+.auth-sub{font-size:12.5px;color:var(--jf-muted-dark);margin-bottom:18px;line-height:1.5}
+.auth-error{background:#e05a6918;border:1px solid #e05a6944;color:var(--jf-red);font-size:12px;border-radius:8px;padding:8px 10px;margin-bottom:14px;text-align:left}
+.auth-input{width:100%;background:var(--jf-bg);border:1px solid var(--jf-border);color:var(--jf-ink);border-radius:8px;padding:11px 12px;font-size:14px;outline:none;text-align:center;font-family:'Noto Sans',sans-serif}
+.auth-input:focus{border-color:var(--jf-green)}
+.auth-code{letter-spacing:.4em;font-family:'Poppins',sans-serif;font-weight:700;font-size:18px}
+.auth-btn{width:100%;margin-top:12px;height:40px}
+.auth-link{display:block;width:100%;margin-top:12px;background:none;border:none;color:var(--jf-muted-dark);font-size:12px;cursor:pointer;text-decoration:underline}
+.auth-link:hover{color:var(--jf-ink)}

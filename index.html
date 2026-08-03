@@ -25,7 +25,11 @@
         <span style="color:#E7E8EC">|</span>
         <span id="headerPeriod" style="font-size:12px;color:#212121BF">—</span>
       </div>
-      <span id="lastSync" style="font-size:11px;color:#212121BF"></span>
+      <div style="display:flex;align-items:center;gap:14px">
+        <span id="lastSync" style="font-size:11px;color:#212121BF"></span>
+        <span id="headerUser" style="font-size:11px;color:#212121BF"></span>
+        <button onclick="logout()" style="background:transparent;border:1px solid var(--jf-border);color:var(--jf-muted-dark);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Sair</button>
+      </div>
     </div>
     <div class="tabs" id="tabBar"></div>
   </div>
@@ -110,5 +114,6 @@
 <script src="js/tabs/lp.js"></script>
 <script src="js/tabs/sync.js"></script>
 <script src="js/app.js"></script>
+<script src="js/auth.js"></script>
 </body>
 </html>
