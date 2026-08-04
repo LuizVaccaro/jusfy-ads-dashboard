@@ -108,6 +108,36 @@ function renderMetaCampanhasFilterChange() {
   document.getElementById('m-campfilter').innerHTML =
     renderMultiSelect('metaCampFilter', 'Filtrar Campanha', 'Todas as Campanhas', camps, 'renderMetaCampanhasFilterChange', 280);
   renderMetaTable();
+  renderMetaChart();
+}
+
+// Reconstrói o gráfico a partir das campanhas selecionadas no multi-select — soma a série diária
+// de gasto+cadastros reais só dos grupos de campanha marcados. Nada selecionado = total combinado
+// (reaproveita o gráfico já calculado, igual ao comportamento de antes).
+function renderMetaChart() {
+  const { dailyChart, agg, dailySpendByGroup: spendMap, dailyConvByGroup: convMap, allDates } = _metaData;
+  const selected = msState('metaCampFilter').selected;
+  let series = dailyChart;
+
+  if (selected.size) {
+    const matchingGids = new Set(agg.filter(r => selected.has(r.campaign_name)).map(r => r._groupId));
+    const spendByDate = {}, convByDate = {};
+    for (const d of allDates) {
+      let s = 0, c = 0;
+      for (const gid of matchingGids) {
+        s += (spendMap[d] && spendMap[d][gid]) || 0;
+        c += (convMap[d]  && convMap[d][gid])  || 0;
+      }
+      spendByDate[d] = s;
+      convByDate[d] = { sel: c };
+    }
+    series = buildComboChartSeries(S.start, S.end, spendByDate, convByDate, 'sel');
+  }
+
+  renderComboChart('metaChart', series.labels, [{ label:'Meta Ads', data:series.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:series.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:series.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  ]);
 }
 
 function renderMetaCampanhas() {
@@ -137,10 +167,7 @@ function renderMetaCampanhas() {
   </div>`;
 
   renderMetaTable();
-  renderComboChart('metaChart', dailyChart.labels, [{ label:'Meta Ads', data:dailyChart.spend, backgroundColor:'#017858' }], [
-    { label:'Cadastros Reais', data:dailyChart.conv, borderColor:'#41C78F', yAxisID:'y1' },
-    { label:'CAC', data:dailyChart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
-  ]);
+  renderMetaChart();
 }
 
 function renderMetaTable() {
@@ -239,7 +266,15 @@ async function tabMeta() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const dailyChart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Meta Ads');
 
-  _metaData = { agg, cmpAgg, cmpMap, hasCmp, dailyChart };
+  // Mesma quebra diária, mas por grupo de campanha (não por canal) — usada quando o usuário
+  // seleciona campanhas no multi-select, pra refazer o gráfico só com os grupos marcados.
+  const { groupIdOf } = buildCampaignGroupIndex(aggRaw, 'meta');
+  const spendByGroupMap = dailySpendByGroup(campsRaw.filter(r => r.platform === 'meta'), groupIdOf);
+  const convByGroupMap = dailyRealConversionsByGroup(convDaily, aggRaw, 'meta');
+  const allDates = Object.keys(spendByDate);
+
+  _metaData = { agg, cmpAgg, cmpMap, hasCmp, dailyChart,
+    dailySpendByGroup: spendByGroupMap, dailyConvByGroup: convByGroupMap, allDates };
 
   document.getElementById('content').innerHTML = `
     <div id="m-subtabs">${renderMetaSubtabs()}</div>
