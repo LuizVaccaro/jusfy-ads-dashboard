@@ -160,21 +160,12 @@ function buildKeywordCampaignAliases(lookup) {
   return aliases;
 }
 
-// Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
-// (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
-// ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,
-// jusfinder_oabrj e a variante de teste) e o Metabase só consegue diferenciar por essa feature,
-// elas são mescladas em 1 linha só — não dá pra inventar um split que o Metabase não fornece.
-function mergeRealConversions(campaignRows, conversionRows, platformKey) {
-  // Nome exato de campanha vale independente do referral (o Metabase às vezes grava errado —
-  // Affiliate/Others — em cadastros que vieram de campanha paga de verdade). Já o fallback por
-  // keyword PRECISA checar o referral: Bing usa a mesma convenção de nomes que o Google
-  // (bing_..._jusfinder), então um utm genérico "JusFinder" do Google não pode ser atribuído
-  // ao Bing só porque a palavra bate — sem essa checagem, cada mergeRealConversions(plataforma)
-  // "rouba" cadastros genéricos de outras plataformas que a mesma feature.
+// Monta o índice de agrupamento de campanhas (mesma feature compartilhada por >1 campanha do
+// período vira um grupo só, ex: jusfinder/jusfinder_oabrj/variante de teste) — extraído de
+// mergeRealConversions pra ser reaproveitado também na quebra DIÁRIA (gráfico filtrado por
+// campanha, ver dailyRealConversionsByGroup/dailySpendByGroup em utils.js).
+function buildCampaignGroupIndex(campaignRows, platformKey) {
   const pattern = PLATFORM_REFERRAL_PATTERNS[platformKey];
-  const convs = conversionRows||[];
-
   const nameLower  = c => (c.campaign_name||'').toLowerCase();
   const keywordsOf = c => FEATURE_KEYWORDS.filter(k => nameLower(c).includes(k));
 
@@ -221,6 +212,18 @@ function mergeRealConversions(campaignRows, conversionRows, platformKey) {
     return groupIdOf(keywordToCampaigns[candidates[0]][0]);
   };
 
+  return { groups, groupIdOf, resolveGroupId };
+}
+
+// Junta campanhas (campaignRows, já com spend/clicks/impressions/sessions) com as conversões reais
+// (conversionRows, saída crua de get_jusfy_conversions_by_campaign) para o platformKey dado
+// ('google_ads' ou 'meta'). Quando várias campanhas compartilham a mesma feature (ex: jusfinder,
+// jusfinder_oabrj e a variante de teste) e o Metabase só consegue diferenciar por essa feature,
+// elas são mescladas em 1 linha só — não dá pra inventar um split que o Metabase não fornece.
+function mergeRealConversions(campaignRows, conversionRows, platformKey) {
+  const { groups, resolveGroupId } = buildCampaignGroupIndex(campaignRows, platformKey);
+  const convs = conversionRows||[];
+
   const realByGroup = {}; // groupId -> {clientes}
   convs.forEach(r => {
     const gid = resolveGroupId(r.utm_campaign, r.referral);
@@ -245,6 +248,7 @@ function mergeRealConversions(campaignRows, conversionRows, platformKey) {
           impressions: sum(members, 'impressions'),
           sessions:    sum(members, 'sessions'),
         };
+    base._groupId = gid; // usado pelo gráfico pra filtrar a série diária pela mesma campanha/grupo
     base.conversions = real.clientes;
     base.cpa = real.clientes > 0 ? base.spend / real.clientes : null;
     base.ctr = base.impressions > 0 ? base.clicks / base.impressions * 100 : 0;
@@ -252,4 +256,31 @@ function mergeRealConversions(campaignRows, conversionRows, platformKey) {
     out.push(base);
   }
   return out.sort((a,b) => b.spend - a.spend);
+}
+
+// Cadastros reais por dia, agrupados pelo mesmo groupId de mergeRealConversions — usado pra
+// filtrar o gráfico "Investimento Diário × Cadastros Reais" quando o usuário seleciona uma
+// campanha específica (por padrão o gráfico só mostra o total combinado de todas as campanhas).
+function dailyRealConversionsByGroup(convDailyRows, campaignRows, platformKey) {
+  const { resolveGroupId } = buildCampaignGroupIndex(campaignRows, platformKey);
+  const byDate = {};
+  for (const r of convDailyRows || []) {
+    const gid = resolveGroupId(r.utm_campaign, r.referral);
+    if (!gid) continue;
+    if (!byDate[r.date]) byDate[r.date] = {};
+    byDate[r.date][gid] = (byDate[r.date][gid] || 0) + (+r.clientes_unicos || 0);
+  }
+  return byDate;
+}
+
+// Gasto por dia, agrupado pelo mesmo groupId — campaignRows aqui são linhas CRUAS (fetchCamps,
+// uma por dia+campanha), não as agregadas do período usadas em mergeRealConversions.
+function dailySpendByGroup(rawDailyRows, groupIdOf) {
+  const byDate = {};
+  for (const r of rawDailyRows || []) {
+    const gid = groupIdOf(r);
+    if (!byDate[r.date]) byDate[r.date] = {};
+    byDate[r.date][gid] = (byDate[r.date][gid] || 0) + (+r.spend || 0);
+  }
+  return byDate;
 }

@@ -84,9 +84,38 @@ function renderBingCampanhas() {
   </div>`;
 
   renderBingTable(null);
-  renderComboChart('bingChart', _bingData.chart.labels, [{ label:'Bing Ads', data:_bingData.chart.spend, backgroundColor:'#017858' }], [
-    { label:'Cadastros Reais', data:_bingData.chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
-    { label:'CAC', data:_bingData.chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  renderBingChart();
+}
+
+// Reconstrói o gráfico a partir do filtro atual (campanha e/ou categoria) — soma a série diária
+// de gasto+cadastros reais só dos grupos de campanha que passam no filtro. Sem filtro nenhum,
+// reaproveita o gráfico já calculado com o total combinado (mais barato e já testado).
+function renderBingChart() {
+  const { chart, agg, dailySpendByGroup: spendMap, dailyConvByGroup: convMap, allDates } = _bingData;
+  let series = chart;
+
+  if (_bingFilter || _bingCategoryFilter) {
+    const matchingGids = new Set(
+      agg.filter(r => (!_bingFilter || r.campaign_name === _bingFilter)
+                    && (!_bingCategoryFilter || campaignCategory(r.campaign_name) === _bingCategoryFilter))
+         .map(r => r._groupId)
+    );
+    const spendByDate = {}, convByDate = {};
+    for (const d of allDates) {
+      let s = 0, c = 0;
+      for (const gid of matchingGids) {
+        s += (spendMap[d] && spendMap[d][gid]) || 0;
+        c += (convMap[d]  && convMap[d][gid])  || 0;
+      }
+      spendByDate[d] = s;
+      convByDate[d] = { sel: c };
+    }
+    series = buildComboChartSeries(S.start, S.end, spendByDate, convByDate, 'sel');
+  }
+
+  renderComboChart('bingChart', series.labels, [{ label:'Bing Ads', data:series.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:series.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:series.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
   ]);
 }
 
@@ -122,6 +151,8 @@ function renderBingTable(filterCamp, filterCategory) {
      ${sortTh('bing','CTR','ctr')}${sortTh('bing','Tx Conversão','txConv')}
      ${sortTh('bing','Cadastros','conversions')}${sortTh('bing','CAC Real','cpa')}
      ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
+
+  if (_bingData.chart.labels.length) renderBingChart();
 
   document.getElementById('bi-tbody').innerHTML = filtered.length ? filtered.map((r,i) => {
     const cmp    = cmpMap[r.campaign_name];
@@ -186,7 +217,15 @@ async function tabBing() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Bing Ads');
 
-  _bingData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup };
+  // Mesma quebra diária, mas por grupo de campanha (não por canal) — usada quando o usuário filtra
+  // por campanha/categoria, pra refazer o gráfico só com os grupos que passam no filtro.
+  const { groupIdOf } = buildCampaignGroupIndex(aggRaw, 'bing_ads');
+  const spendByGroupMap = dailySpendByGroup(campsRaw.filter(r => r.platform === 'bing_ads'), groupIdOf);
+  const convByGroupMap = dailyRealConversionsByGroup(convDaily, aggRaw, 'bing_ads');
+  const allDates = Object.keys(spendByDate);
+
+  _bingData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup,
+    dailySpendByGroup: spendByGroupMap, dailyConvByGroup: convByGroupMap, allDates };
   _bingFilter = null;
   _bingCategoryFilter = null;
   registerSortRenderer('bing', () => renderBingTable());

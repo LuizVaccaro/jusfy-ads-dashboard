@@ -84,9 +84,38 @@ function renderGoogleCampanhas() {
   </div>`;
 
   renderGoogleTable(null);
-  renderComboChart('googleChart', _googleData.chart.labels, [{ label:'Google Ads', data:_googleData.chart.spend, backgroundColor:'#017858' }], [
-    { label:'Cadastros Reais', data:_googleData.chart.conv, borderColor:'#41C78F', yAxisID:'y1' },
-    { label:'CAC', data:_googleData.chart.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
+  renderGoogleChart();
+}
+
+// Reconstrói o gráfico a partir do filtro atual (campanha e/ou categoria) — soma a série diária
+// de gasto+cadastros reais só dos grupos de campanha que passam no filtro. Sem filtro nenhum,
+// reaproveita o gráfico já calculado com o total combinado (mais barato e já testado).
+function renderGoogleChart() {
+  const { chart, agg, dailySpendByGroup: spendMap, dailyConvByGroup: convMap, allDates } = _googleData;
+  let series = chart;
+
+  if (_googleFilter || _googleCategoryFilter) {
+    const matchingGids = new Set(
+      agg.filter(r => (!_googleFilter || r.campaign_name === _googleFilter)
+                    && (!_googleCategoryFilter || campaignCategory(r.campaign_name) === _googleCategoryFilter))
+         .map(r => r._groupId)
+    );
+    const spendByDate = {}, convByDate = {};
+    for (const d of allDates) {
+      let s = 0, c = 0;
+      for (const gid of matchingGids) {
+        s += (spendMap[d] && spendMap[d][gid]) || 0;
+        c += (convMap[d]  && convMap[d][gid])  || 0;
+      }
+      spendByDate[d] = s;
+      convByDate[d] = { sel: c };
+    }
+    series = buildComboChartSeries(S.start, S.end, spendByDate, convByDate, 'sel');
+  }
+
+  renderComboChart('googleChart', series.labels, [{ label:'Google Ads', data:series.spend, backgroundColor:'#017858' }], [
+    { label:'Cadastros Reais', data:series.conv, borderColor:'#41C78F', yAxisID:'y1' },
+    { label:'CAC', data:series.cac, borderColor:'#e05a69', yAxisID:'y', borderDash:[5,3] },
   ]);
 }
 
@@ -122,6 +151,8 @@ function renderGoogleTable(filterCamp, filterCategory) {
      ${sortTh('google','CTR','ctr')}${sortTh('google','Tx Conversão','txConv')}
      ${sortTh('google','Cadastros','conversions')}${sortTh('google','CAC Real','cpa')}
      ${hasCmp?'<th class="r">Δ Gasto</th>':''}`;
+
+  if (_googleData.chart.labels.length) renderGoogleChart();
 
   document.getElementById('g-tbody').innerHTML = filtered.length ? filtered.map((r,i) => {
     const cmp    = cmpMap[r.campaign_name];
@@ -187,7 +218,15 @@ async function tabGoogle() {
   const channelConvMap = aggregateDailyRealConversionsByChannel(convDaily, campaignLookup);
   const chart = buildComboChartSeries(S.start, S.end, spendByDate, channelConvMap, 'Google Ads');
 
-  _googleData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup };
+  // Mesma quebra diária, mas por grupo de campanha (não por canal) — usada quando o usuário filtra
+  // por campanha/categoria, pra refazer o gráfico só com os grupos que passam no filtro.
+  const { groupIdOf } = buildCampaignGroupIndex(aggRaw, 'google_ads');
+  const spendByGroupMap = dailySpendByGroup(campsRaw.filter(r => r.platform === 'google_ads'), groupIdOf);
+  const convByGroupMap = dailyRealConversionsByGroup(convDaily, aggRaw, 'google_ads');
+  const allDates = Object.keys(spendByDate);
+
+  _googleData = { agg, cmpAgg, cmpMap, hasCmp, chart, campaignLookup,
+    dailySpendByGroup: spendByGroupMap, dailyConvByGroup: convByGroupMap, allDates };
   _googleFilter = null;
   _googleCategoryFilter = null;
   registerSortRenderer('google', () => renderGoogleTable());
