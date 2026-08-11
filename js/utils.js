@@ -220,6 +220,15 @@ async function fetchLogs() {
 async function fetchMetaCreatives(s, e) {
   return supa(`meta_creatives?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
 }
+// Jusfy México (JusGPT) — cadastros/status vêm de BigQuery via Metabase (sem PII), spend vem do
+// Google Ads MX (Edge Function própria, platform 'google_ads_mx'). Ver Notion: Plano — Dashboard
+// de Ads (MVP), Sessão 12.
+async function fetchMxConversionsDaily(s, e) {
+  return supa(`mx_conversions_daily?select=date,cadastros,pending_checkout,pagos&date=gte.${s}&date=lte.${e}&order=date.asc`);
+}
+async function fetchMxCampaignDaily(s, e) {
+  return supa(`mx_campaign_daily?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
+}
 async function fetchGoogleCreatives(s, e) {
   return supa(`google_creatives?select=*&date=gte.${s}&date=lte.${e}&order=date.asc`);
 }
